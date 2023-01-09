@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"github.com/adrg/xdg"
+	"github.com/aprokopczyk/mergemate/pkg/gitlab"
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/dotenv"
 	"github.com/knadh/koanf/providers/env"
@@ -33,6 +34,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Invalid config: %v.", err)
 	}
+	_ = gitlab.New(config.GitlabUrl, config.ProjectName, config.BranchPrefix, config.UserName, config.ApiToken)
 }
 
 func validateConfig(config *AppConfig) error {
