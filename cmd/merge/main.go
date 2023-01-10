@@ -4,6 +4,8 @@ import (
 	"errors"
 	"github.com/adrg/xdg"
 	"github.com/aprokopczyk/mergemate/pkg/gitlab"
+	"github.com/aprokopczyk/mergemate/ui"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/dotenv"
 	"github.com/knadh/koanf/providers/env"
@@ -34,7 +36,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("Invalid config: %v.", err)
 	}
-	_ = gitlab.New(config.GitlabUrl, config.ProjectName, config.BranchPrefix, config.UserName, config.ApiToken)
+	client := gitlab.New(config.GitlabUrl, config.ProjectName, config.BranchPrefix, config.UserName, config.ApiToken)
+	p := tea.NewProgram(ui.New(client), tea.WithAltScreen())
+
+	if _, err := p.Run(); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func validateConfig(config *AppConfig) error {
