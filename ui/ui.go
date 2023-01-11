@@ -39,7 +39,7 @@ func (ui *UI) Init() tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 	ui.tabs[mergeRequestsTab] = "Merge requests"
 	ui.tabContent[mergeRequestsTab] = tabs.NewMergeRequestTable(ui.gitlabClient, tabContentsStyle.GetHorizontalFrameSize())
-	ui.tabs[branchesTab] = "Branches"
+	ui.tabs[branchesTab] = "Your branches"
 	ui.tabContent[branchesTab] = tabs.NewBranchTable(ui.gitlabClient, tabContentsStyle.GetHorizontalFrameSize())
 	cmds = append(cmds, ui.tabContent[mergeRequestsTab].Init())
 	cmds = append(cmds, ui.tabContent[branchesTab].Init())

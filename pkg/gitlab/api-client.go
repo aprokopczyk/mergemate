@@ -19,7 +19,7 @@ type ApiClient struct {
 	resty        *resty.Client
 	projectName  string
 	userName     string
-	branchPrefix string
+	BranchPrefix string
 	apiToken     string
 }
 type MergeRequestDetails struct {
@@ -62,7 +62,6 @@ func (client *ApiClient) ListBranches() []Branch {
 	var branches []Branch
 	_, err := client.resty.R().
 		SetResult(&branches).
-		SetQueryParam("search", "^"+client.branchPrefix).
 		SetPathParam(projectIdParam, client.projectName).
 		Get(BranchesEndpoint)
 
@@ -102,7 +101,7 @@ func New(gitlabUrl string, projectName string, branchPrefix string, userName str
 	client := &ApiClient{
 		resty:        createClient(gitlabUrl, apiToken),
 		projectName:  projectName,
-		branchPrefix: branchPrefix,
+		BranchPrefix: branchPrefix,
 		userName:     userName,
 		apiToken:     apiToken,
 	}
