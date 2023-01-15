@@ -63,6 +63,8 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "left":
 			ui.activeTab = max(ui.activeTab-1, 0)
 			cmds = append(cmds, ui.tabContent[ui.activeTab].Init())
+		case "ctrl+c":
+			cmds = append(cmds, tea.Quit)
 		}
 	case tea.WindowSizeMsg:
 		ui.totalWidth = msg.Width

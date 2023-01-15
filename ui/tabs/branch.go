@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	columnKeyBranchName = "branchName"
-	columnKeyLastCommit = "lastCommit"
+	columnKeyBranchName     = "branchName"
+	columnKeyLastCommit     = "lastCommit"
+	columnKeyBranchMetadata = "branchDetails"
 )
 
 type BranchTable struct {
@@ -83,14 +84,6 @@ func (m *BranchTable) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds []tea.Cmd
 	)
 
-	if !m.showMergeTargets {
-		m.flexTable, cmd = m.flexTable.Update(msg)
-		cmds = append(cmds, cmd)
-	} else {
-		m.branchesList, cmd = m.branchesList.Update(msg)
-		cmds = append(cmds, cmd)
-	}
-
 	switch msg := msg.(type) {
 	case []gitlab.Branch:
 		var rows []table.Row
@@ -98,8 +91,9 @@ func (m *BranchTable) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for i := 0; i < len(msg); i++ {
 			if strings.HasPrefix(msg[i].Name, m.gitlabClient.BranchPrefix) {
 				rows = append(rows, table.NewRow(table.RowData{
-					columnKeyBranchName: msg[i].Name,
-					columnKeyLastCommit: msg[i].Commit.AuthoredDate,
+					columnKeyBranchName:     msg[i].Name,
+					columnKeyLastCommit:     msg[i].Commit.AuthoredDate,
+					columnKeyBranchMetadata: msg[i],
 				}))
 			} else {
 				targetBranches = append(targetBranches, branchItem{name: msg[i].Name})
@@ -116,18 +110,36 @@ func (m *BranchTable) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "m":
 			if !m.showMergeTargets {
-				m.showMergeTargets = true
-				m.recalculateComponents()
+				m.changeBranchSelectionVisibility(true)
 			}
 		case "esc":
-			if m.showMergeTargets {
-				m.showMergeTargets = false
-				m.recalculateComponents()
+			if m.showMergeTargets && m.branchesList.FilterState() != list.Filtering {
+				m.changeBranchSelectionVisibility(false)
+			}
+		case "enter":
+			if m.showMergeTargets && m.branchesList.FilterState() != list.Filtering {
+				sourceBranch := m.flexTable.HighlightedRow().Data[columnKeyBranchMetadata].(gitlab.Branch)
+				targetBranch := m.branchesList.SelectedItem().(branchItem)
+				cmds = append(cmds, m.createMergeRequest(sourceBranch.Name, targetBranch.name, sourceBranch.Commit.Message))
+				m.changeBranchSelectionVisibility(false)
 			}
 		}
 	}
 
+	if !m.showMergeTargets {
+		m.flexTable, cmd = m.flexTable.Update(msg)
+		cmds = append(cmds, cmd)
+	} else {
+		m.branchesList, cmd = m.branchesList.Update(msg)
+		cmds = append(cmds, cmd)
+	}
+
 	return m, tea.Batch(cmds...)
+}
+
+func (m *BranchTable) changeBranchSelectionVisibility(visible bool) {
+	m.showMergeTargets = visible
+	m.recalculateComponents()
 }
 
 func (m *BranchTable) recalculateComponents() {
