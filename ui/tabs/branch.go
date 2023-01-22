@@ -69,7 +69,8 @@ func (m *BranchTable) listBranches() tea.Msg {
 
 func (m *BranchTable) createMergeRequest(sourceBranch string, targetBranch string, title string) tea.Cmd {
 	return func() tea.Msg {
-		m.gitlabClient.CreateMergeRequest(sourceBranch, targetBranch, title)
+		mrIid := m.gitlabClient.CreateMergeRequest(sourceBranch, targetBranch, title)
+		m.gitlabClient.CreateMergeRequestNote(mrIid, MergeAutomatically)
 		return nil
 	}
 }

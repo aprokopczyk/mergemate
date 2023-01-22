@@ -48,10 +48,20 @@ func (ui *UI) Init() tea.Cmd {
 
 func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
-	componentModel, componentCommand := ui.tabContent[ui.activeTab].Update(msg)
-	ui.tabContent[ui.activeTab] = componentModel
-	if componentCommand != nil {
-		cmds = append(cmds, componentCommand)
+	switch msg := msg.(type) {
+	case tabs.MergeAutomaticallyStatus:
+		componentModel, componentCommand := ui.tabContent[mergeRequestsTab].Update(msg)
+		ui.tabContent[mergeRequestsTab] = componentModel
+		if componentCommand != nil {
+			cmds = append(cmds, componentCommand)
+		}
+		break
+	default:
+		componentModel, componentCommand := ui.tabContent[ui.activeTab].Update(msg)
+		ui.tabContent[ui.activeTab] = componentModel
+		if componentCommand != nil {
+			cmds = append(cmds, componentCommand)
+		}
 	}
 
 	switch msg := msg.(type) {

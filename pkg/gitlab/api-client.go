@@ -45,10 +45,11 @@ type MergeRequestDetails struct {
 	HasConflicts              bool   `json:"has_conflicts"`
 	ShouldRemoveSourceBranch  bool   `json:"should_remove_source_branch"`
 	CommitsBehind             int    `json:"diverged_commits_count"`
+	Sha                       string `json:"sha"`
 }
 
 type MergeRequestNote struct {
-	MergeRequestIid string `json:"noteable_iid"`
+	MergeRequestIid int    `json:"noteable_iid"`
 	Body            string `json:"body"`
 }
 
@@ -89,6 +90,22 @@ func (client *ApiClient) ListMergeRequestNotes(mergeRequestIid int) []MergeReque
 	}
 
 	return notes
+}
+
+func (client *ApiClient) CreateMergeRequestNote(mergeRequestIid int, noteBody string) MergeRequestNote {
+	var note MergeRequestNote
+	_, err := client.resty.R().
+		SetResult(&note).
+		SetPathParam(projectIdParam, client.projectName).
+		SetPathParam(mergeRequestIdParam, strconv.Itoa(mergeRequestIid)).
+		SetQueryParam("body", noteBody).
+		Post(MergeRequestsEventsEndpoint)
+
+	if err != nil {
+		fmt.Println("Error when executing query." + err.Error())
+	}
+
+	return note
 }
 
 func (client *ApiClient) ListBranches() []Branch {
