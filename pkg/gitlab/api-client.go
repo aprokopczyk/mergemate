@@ -21,6 +21,7 @@ const includeRebaseInProgress = "include_rebase_in_progress"
 const MergeRequestsEndpoint = "/api/v4/projects/{" + projectIdParam + "}/merge_requests"
 const MergeRequestsMergeEndpoint = "/api/v4/projects/{" + projectIdParam + "}/merge_requests/{" + mergeRequestIdParam + "}/merge"
 const MergeRequestsDetailsEndpoint = "/api/v4/projects/{" + projectIdParam + "}/merge_requests/{" + mergeRequestIdParam + "}"
+const MergeRequestsRebaseEndpoint = "/api/v4/projects/{" + projectIdParam + "}/merge_requests/{" + mergeRequestIdParam + "}/rebase"
 const MergeRequestsEventsEndpoint = "/api/v4/projects/{" + projectIdParam + "}/merge_requests/{" + mergeRequestIdParam + "}/notes"
 const BranchesEndpoint = "/api/v4/projects/{" + projectIdParam + "}/repository/branches"
 const DeleteBranchEndpoint = "/api/v4/projects/{" + projectIdParam + "}/repository/branches/{" + branchIdParam + "}"
@@ -181,6 +182,19 @@ func (client *ApiClient) getMergeRequestDetails(mergeRequestIid int) MergeReques
 		fmt.Println("Error when executing query." + err.Error())
 	}
 	return mergeRequest
+}
+
+func (client *ApiClient) RebaseMergeRequest(mergeRequestIid int) {
+	var mergeRequest MergeRequestDetails
+	_, err := client.resty.R().
+		SetPathParam(projectIdParam, client.projectName).
+		SetPathParam(mergeRequestIdParam, strconv.Itoa(mergeRequestIid)).
+		SetResult(&mergeRequest).
+		Put(MergeRequestsRebaseEndpoint)
+
+	if err != nil {
+		fmt.Println("Error when executing query." + err.Error())
+	}
 }
 
 func New(gitlabUrl string, projectName string, branchPrefix string, userName string, apiToken string) *ApiClient {

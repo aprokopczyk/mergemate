@@ -10,11 +10,12 @@ import (
 )
 
 const (
-	columnKeyMergeRequest       = "mergeRequest"
-	columnKeyMergeAutomatically = "mergeAutomatically"
-	columnKeyStatus             = "status"
-	columnKeySourceBranch       = "sourceBranch"
-	columnKeyTargetBranch       = "targetBranch"
+	columnKeyMergeRequest         = "mergeRequest"
+	columnKeyMergeAutomatically   = "mergeAutomatically"
+	columnKeyStatus               = "status"
+	columnKeySourceBranch         = "sourceBranch"
+	columnKeyTargetBranch         = "targetBranch"
+	columnKeyMergeRequestMetadata = "mergeRequestMetadata"
 )
 
 const checking = "checking"
@@ -56,8 +57,14 @@ func NewMergeRequestTable(apiClient *gitlab.ApiClient, totalMargin int) *MergeRe
 
 func (m *MergeRequestTable) listMergeRequests() tea.Msg {
 	mergeRequests := m.gitlabClient.ListMergeRequests()
-
 	return mergeRequests
+}
+
+func (m *MergeRequestTable) rebaseMergeRequest(mergeRequestIid int) tea.Cmd {
+	return func() tea.Msg {
+		m.gitlabClient.RebaseMergeRequest(mergeRequestIid)
+		return nil
+	}
 }
 
 type MergeAutomaticallyStatus struct {
@@ -123,6 +130,12 @@ func (m *MergeRequestTable) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.totalWidth = msg.Width
 		m.recalculateTable()
 		cmds = append(cmds, tea.ClearScreen)
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "r":
+			mrToRebase := m.flexTable.HighlightedRow().Data[columnKeyMergeRequestMetadata].(gitlab.MergeRequestDetails)
+			cmds = append(cmds, m.rebaseMergeRequest(mrToRebase.Iid))
+		}
 	}
 
 	return m, tea.Batch(cmds...)
@@ -132,11 +145,12 @@ func (m *MergeRequestTable) redrawTable() {
 	var rows []table.Row
 	for _, mergeRequest := range m.mergeRequests {
 		rows = append(rows, table.NewRow(table.RowData{
-			columnKeyMergeRequest:       mergeRequest.Title,
-			columnKeyMergeAutomatically: m.mergeAutomaticallyStatuses[mergeRequest.Iid],
-			columnKeyStatus:             mergeRequest.DetailedMergeStatus,
-			columnKeySourceBranch:       mergeRequest.SourceBranch,
-			columnKeyTargetBranch:       mergeRequest.TargetBranch,
+			columnKeyMergeRequest:         mergeRequest.Title,
+			columnKeyMergeAutomatically:   m.mergeAutomaticallyStatuses[mergeRequest.Iid],
+			columnKeyStatus:               mergeRequest.DetailedMergeStatus,
+			columnKeySourceBranch:         mergeRequest.SourceBranch,
+			columnKeyTargetBranch:         mergeRequest.TargetBranch,
+			columnKeyMergeRequestMetadata: mergeRequest,
 		}))
 	}
 	m.flexTable = m.flexTable.WithRows(rows)
