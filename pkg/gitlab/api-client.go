@@ -152,7 +152,7 @@ func (client *ApiClient) CreateMergeRequest(sourceBranch string, targetBranch st
 	return result.Iid
 }
 
-func (client *ApiClient) mergeMergeRequest(mergeRequestIid int) MergeRequestDetails {
+func (client *ApiClient) MergeMergeRequest(mergeRequestIid int) MergeRequestDetails {
 	var mergeRequest MergeRequestDetails
 	_, err := client.resty.R().
 		SetPathParam(projectIdParam, client.projectName).

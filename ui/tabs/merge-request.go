@@ -89,6 +89,13 @@ func (m *MergeRequestTable) shouldBeMergedAutomatically(mergeRequestIid int) tea
 	}
 }
 
+func (m *MergeRequestTable) mergeMergeRequest(mergeRequestIid int) tea.Cmd {
+	return func() tea.Msg {
+		m.gitlabClient.MergeMergeRequest(mergeRequestIid)
+		return nil
+	}
+}
+
 func (m *MergeRequestTable) Init() tea.Cmd {
 	return m.listMergeRequests
 }
@@ -135,6 +142,9 @@ func (m *MergeRequestTable) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "r":
 			mrToRebase := m.flexTable.HighlightedRow().Data[columnKeyMergeRequestMetadata].(gitlab.MergeRequestDetails)
 			cmds = append(cmds, m.rebaseMergeRequest(mrToRebase.Iid))
+		case "m":
+			mrToMerge := m.flexTable.HighlightedRow().Data[columnKeyMergeRequestMetadata].(gitlab.MergeRequestDetails)
+			cmds = append(cmds, m.mergeMergeRequest(mrToMerge.Iid))
 		}
 	}
 
