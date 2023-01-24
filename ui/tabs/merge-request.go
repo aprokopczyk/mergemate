@@ -62,7 +62,10 @@ func (m *MergeRequestTable) listMergeRequests() tea.Msg {
 
 func (m *MergeRequestTable) rebaseMergeRequest(mergeRequestIid int) tea.Cmd {
 	return func() tea.Msg {
-		m.gitlabClient.RebaseMergeRequest(mergeRequestIid)
+		pipelines := m.gitlabClient.GetMergeRequestPipelines(mergeRequestIid)
+		numberOfPipelines := len(pipelines)
+		var shouldSkipCi = numberOfPipelines > 0 && pipelines[0].Status == "success"
+		m.gitlabClient.RebaseMergeRequest(mergeRequestIid, shouldSkipCi)
 		return nil
 	}
 }

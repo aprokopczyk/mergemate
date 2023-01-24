@@ -3,7 +3,9 @@ package gitlab
 import (
 	"fmt"
 	"github.com/go-resty/resty/v2"
+	"sort"
 	"strconv"
+	"time"
 )
 
 const projectIdParam = "projectId"
@@ -23,6 +25,7 @@ const MergeRequestsMergeEndpoint = "/api/v4/projects/{" + projectIdParam + "}/me
 const MergeRequestsDetailsEndpoint = "/api/v4/projects/{" + projectIdParam + "}/merge_requests/{" + mergeRequestIdParam + "}"
 const MergeRequestsRebaseEndpoint = "/api/v4/projects/{" + projectIdParam + "}/merge_requests/{" + mergeRequestIdParam + "}/rebase"
 const MergeRequestsEventsEndpoint = "/api/v4/projects/{" + projectIdParam + "}/merge_requests/{" + mergeRequestIdParam + "}/notes"
+const MergeRequestsPipelinesEndpoint = "/api/v4/projects/{" + projectIdParam + "}/merge_requests/{" + mergeRequestIdParam + "}/pipelines"
 const BranchesEndpoint = "/api/v4/projects/{" + projectIdParam + "}/repository/branches"
 const DeleteBranchEndpoint = "/api/v4/projects/{" + projectIdParam + "}/repository/branches/{" + branchIdParam + "}"
 
@@ -184,17 +187,47 @@ func (client *ApiClient) getMergeRequestDetails(mergeRequestIid int) MergeReques
 	return mergeRequest
 }
 
-func (client *ApiClient) RebaseMergeRequest(mergeRequestIid int) {
+func (client *ApiClient) RebaseMergeRequest(mergeRequestIid int, shouldSkipCi bool) {
 	var mergeRequest MergeRequestDetails
 	_, err := client.resty.R().
 		SetPathParam(projectIdParam, client.projectName).
 		SetPathParam(mergeRequestIdParam, strconv.Itoa(mergeRequestIid)).
+		SetQueryParam("skip_ci", strconv.FormatBool(shouldSkipCi)).
 		SetResult(&mergeRequest).
 		Put(MergeRequestsRebaseEndpoint)
 
 	if err != nil {
 		fmt.Println("Error when executing query." + err.Error())
 	}
+}
+
+type MergeRequestPipeline struct {
+	Id        int       `json:"id"`
+	Sha       string    `json:"sha"`
+	Ref       string    `json:"ref"`
+	Status    string    `json:"status"`
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (client *ApiClient) GetMergeRequestPipelines(mergeRequestIid int) []MergeRequestPipeline {
+	var pipelines []MergeRequestPipeline
+	_, err := client.resty.R().
+		SetResult(&pipelines).
+		SetPathParam(projectIdParam, client.projectName).
+		SetPathParam(mergeRequestIdParam, strconv.Itoa(mergeRequestIid)).
+		SetQueryParam("order_by", "id").
+		SetQueryParam("sort", "asc").
+		Get(MergeRequestsPipelinesEndpoint)
+
+	if err != nil {
+		fmt.Println("Error when executing query." + err.Error())
+	}
+
+	sort.SliceStable(pipelines, func(i, j int) bool {
+		return pipelines[i].CreatedAt.Unix() > pipelines[j].CreatedAt.Unix()
+	})
+	return pipelines
 }
 
 func New(gitlabUrl string, projectName string, branchPrefix string, userName string, apiToken string) *ApiClient {
