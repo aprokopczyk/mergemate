@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
+	"sort"
 	"strings"
 )
 
@@ -63,6 +64,10 @@ func createList() list.Model {
 
 func (m *BranchTable) listBranches() tea.Msg {
 	branches := m.gitlabClient.ListBranches()
+
+	sort.SliceStable(branches, func(i, j int) bool {
+		return branches[i].Commit.AuthoredDate.Unix() > branches[j].Commit.AuthoredDate.Unix()
+	})
 
 	return branches
 }

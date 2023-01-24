@@ -58,8 +58,8 @@ type MergeRequestNote struct {
 }
 
 type CommitDetails struct {
-	AuthoredDate string `json:"authored_date"`
-	Message      string `json:"message"`
+	AuthoredDate time.Time `json:"authored_date"`
+	Message      string    `json:"message"`
 }
 type Branch struct {
 	Name   string        `json:"name"`
