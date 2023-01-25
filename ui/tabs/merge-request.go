@@ -3,6 +3,7 @@ package tabs
 import (
 	"github.com/aprokopczyk/mergemate/pkg/gitlab"
 	"github.com/aprokopczyk/mergemate/ui/colors"
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
@@ -48,7 +49,8 @@ func NewMergeRequestTable(apiClient *gitlab.ApiClient, totalMargin int) *MergeRe
 			table.NewFlexColumn(columnKeyTargetBranch, "Target branch", 1),
 		}).WithRows([]table.Row{}).Focused(true).
 			HeaderStyle(lipgloss.NewStyle().Bold(true)).
-			WithBaseStyle(lipgloss.NewStyle().Align(lipgloss.Left).BorderForeground(colors.Emerald600)),
+			WithBaseStyle(lipgloss.NewStyle().Align(lipgloss.Left).BorderForeground(colors.Emerald600)).
+			WithPageSize(10),
 		gitlabClient:               apiClient,
 		totalMargin:                totalMargin,
 		mergeAutomaticallyStatuses: make(map[int]string),
@@ -103,7 +105,7 @@ func (m *MergeRequestTable) Init() tea.Cmd {
 	return m.listMergeRequests
 }
 
-func (m *MergeRequestTable) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *MergeRequestTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -171,6 +173,10 @@ func (m *MergeRequestTable) redrawTable() {
 
 func (m *MergeRequestTable) recalculateTable() {
 	m.flexTable = m.flexTable.WithTargetWidth(m.totalWidth - m.totalMargin)
+}
+
+func (m *MergeRequestTable) FullHelp() []key.Binding {
+	return []key.Binding{}
 }
 
 func (m *MergeRequestTable) View() string {

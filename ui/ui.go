@@ -3,7 +3,10 @@ package ui
 import (
 	"github.com/aprokopczyk/mergemate/pkg/gitlab"
 	"github.com/aprokopczyk/mergemate/ui/colors"
+	"github.com/aprokopczyk/mergemate/ui/keys"
 	"github.com/aprokopczyk/mergemate/ui/tabs"
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"strings"
@@ -17,19 +20,23 @@ const (
 
 type UI struct {
 	tabs         []string
-	tabContent   []tea.Model
+	tabContent   []tabs.TabContent
+	help         help.Model
 	activeTab    int
 	gitlabClient *gitlab.ApiClient
 	totalWidth   int
 }
 
 func New(apiClient *gitlab.ApiClient) *UI {
+	helpModel := help.New()
+	helpModel.ShowAll = true
 	ui := &UI{
 		tabs:         make([]string, lastTab),
-		tabContent:   make([]tea.Model, lastTab),
+		tabContent:   make([]tabs.TabContent, lastTab),
 		activeTab:    mergeRequestsTab,
 		gitlabClient: apiClient,
 		totalWidth:   0,
+		help:         helpModel,
 	}
 
 	return ui
@@ -66,18 +73,19 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "right":
+		switch {
+		case key.Matches(msg, keys.Keys.Right):
 			ui.activeTab = min(ui.activeTab+1, len(ui.tabs)-1)
 			cmds = append(cmds, ui.tabContent[ui.activeTab].Init())
-		case "left":
+		case key.Matches(msg, keys.Keys.Left):
 			ui.activeTab = max(ui.activeTab-1, 0)
 			cmds = append(cmds, ui.tabContent[ui.activeTab].Init())
-		case "ctrl+c":
+		case key.Matches(msg, keys.Keys.Quit):
 			cmds = append(cmds, tea.Quit)
 		}
 	case tea.WindowSizeMsg:
 		ui.totalWidth = msg.Width
+		ui.help.Width = msg.Width
 		cmds = append(cmds, triggerOnAll(msg, ui)...)
 	}
 
@@ -129,6 +137,8 @@ func (ui *UI) View() string {
 	toRender.WriteString(tabSectionStyle.Copy().Width(ui.totalWidth).Render(lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)))
 	toRender.WriteString("\n")
 	toRender.WriteString(tabContentsStyle.Copy().Width(ui.totalWidth).Render(ui.tabContent[ui.activeTab].View()))
+	toRender.WriteString("\n")
+	toRender.WriteString(tabContentsStyle.Copy().Width(ui.totalWidth).Render(ui.help.View(keys.GetKeyMap(ui.tabContent[ui.activeTab].FullHelp()))))
 	return toRender.String()
 }
 

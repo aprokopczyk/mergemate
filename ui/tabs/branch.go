@@ -3,6 +3,7 @@ package tabs
 import (
 	"github.com/aprokopczyk/mergemate/pkg/gitlab"
 	"github.com/aprokopczyk/mergemate/ui/colors"
+	"github.com/aprokopczyk/mergemate/ui/keys"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -22,8 +23,7 @@ const (
 type BranchTable struct {
 	branchesList     list.Model
 	flexTable        table.Model
-	keys             keyMap
-	help             help.Model
+	keys             keys.BranchKeyMap
 	totalMargin      int
 	totalWidth       int
 	gitlabClient     *gitlab.ApiClient
@@ -39,36 +39,6 @@ func (i branchItem) Title() string       { return i.name }
 func (i branchItem) Description() string { return i.name }
 func (i branchItem) FilterValue() string { return i.name }
 
-type keyMap struct {
-	Up                      key.Binding
-	Down                    key.Binding
-	Left                    key.Binding
-	Right                   key.Binding
-	MergeAutomatically      key.Binding
-	CloseTargetBranchesList key.Binding
-	SelectTargetBranch      key.Binding
-}
-
-var keys = keyMap{
-	Up:                      key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "move up")),
-	Down:                    key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "move down")),
-	Left:                    key.NewBinding(key.WithKeys("left"), key.WithHelp("←", "Switch to left tab")),
-	Right:                   key.NewBinding(key.WithKeys("right"), key.WithHelp("→", "Switch to right tab")),
-	MergeAutomatically:      key.NewBinding(key.WithKeys("m"), key.WithHelp("m", "Create automatic merge request")),
-	CloseTargetBranchesList: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "Close target branches list"), key.WithDisabled()),
-	SelectTargetBranch:      key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "Select target branch"), key.WithDisabled()),
-}
-
-func (k keyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Down, k.Down}
-}
-func (k keyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{
-		{k.Up, k.Down, k.Left, k.Right},
-		{k.MergeAutomatically, k.CloseTargetBranchesList, k.SelectTargetBranch},
-	}
-}
-
 func NewBranchTable(apiClient *gitlab.ApiClient, totalMargin int) *BranchTable {
 	helpModel := help.New()
 	helpModel.ShowAll = true
@@ -82,8 +52,7 @@ func NewBranchTable(apiClient *gitlab.ApiClient, totalMargin int) *BranchTable {
 			WithBaseStyle(lipgloss.NewStyle().Align(lipgloss.Left).BorderForeground(colors.Emerald600)).
 			WithPageSize(10),
 		branchesList:     createList(),
-		keys:             keys,
-		help:             helpModel,
+		keys:             keys.BranchHelp(),
 		gitlabClient:     apiClient,
 		totalMargin:      totalMargin,
 		branches:         []gitlab.Branch{},
@@ -98,6 +67,7 @@ func createList() list.Model {
 	model.Title = "Select target branch"
 	model.DisableQuitKeybindings()
 	model.SetShowStatusBar(false)
+	model.SetShowHelp(false)
 	return model
 }
 
@@ -123,7 +93,7 @@ func (m *BranchTable) Init() tea.Cmd {
 	return m.listBranches
 }
 
-func (m *BranchTable) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *BranchTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -193,7 +163,6 @@ func (m *BranchTable) changeBranchSelectionVisibility(visible bool) {
 func (m *BranchTable) recalculateComponents() {
 	tableWidth := m.tableSize()
 	m.flexTable = m.flexTable.WithTargetWidth(tableWidth)
-	m.help.Width = tableWidth
 	v := m.contentSize() - tableWidth
 	m.branchesList.SetWidth(v)
 }
@@ -211,9 +180,17 @@ func (m *BranchTable) contentSize() int {
 	return contentSize
 }
 
+func (m *BranchTable) FullHelp() []key.Binding {
+	return []key.Binding{
+		m.keys.MergeAutomatically,
+		m.keys.CloseTargetBranchesList,
+		m.keys.SelectTargetBranch,
+	}
+}
+
 func (m *BranchTable) View() string {
 	if m.showMergeTargets {
-		return lipgloss.JoinHorizontal(lipgloss.Top, m.flexTable.View()+"\n"+m.help.View(m.keys), m.branchesList.View())
+		return lipgloss.JoinHorizontal(lipgloss.Top, m.flexTable.View(), m.branchesList.View())
 	}
-	return m.flexTable.View() + "\n" + m.help.View(m.keys)
+	return m.flexTable.View()
 }
