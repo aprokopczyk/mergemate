@@ -3,6 +3,7 @@ package tabs
 import (
 	"github.com/aprokopczyk/mergemate/pkg/gitlab"
 	"github.com/aprokopczyk/mergemate/ui/colors"
+	"github.com/aprokopczyk/mergemate/ui/keys"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -37,6 +38,7 @@ type MergeRequestTable struct {
 	totalMargin                int
 	totalWidth                 int
 	gitlabClient               *gitlab.ApiClient
+	keys                       keys.MergeRequestKeyMap
 }
 
 func NewMergeRequestTable(apiClient *gitlab.ApiClient, totalMargin int) *MergeRequestTable {
@@ -54,6 +56,7 @@ func NewMergeRequestTable(apiClient *gitlab.ApiClient, totalMargin int) *MergeRe
 		gitlabClient:               apiClient,
 		totalMargin:                totalMargin,
 		mergeAutomaticallyStatuses: make(map[int]string),
+		keys:                       keys.MergeRequestHelp(),
 	}
 }
 
@@ -176,7 +179,10 @@ func (m *MergeRequestTable) recalculateTable() {
 }
 
 func (m *MergeRequestTable) FullHelp() []key.Binding {
-	return []key.Binding{}
+	return []key.Binding{
+		m.keys.Rebase,
+		m.keys.Merge,
+	}
 }
 
 func (m *MergeRequestTable) View() string {
