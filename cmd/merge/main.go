@@ -24,10 +24,19 @@ type AppConfig struct {
 }
 
 const configFile = "/mergemate/mergemate_config.env"
+const mergeMateDir = "/mergemate"
+const logFile = "/debug.log"
 
 var k = koanf.New(".")
 
 func main() {
+	loggerFile, err := configureLogFile()
+	if err != nil {
+		log.Fatalf("Error when configuring logfile: %v", err)
+	}
+
+	log.Println("Started application")
+
 	config, err := parseConfig()
 	if err != nil {
 		log.Fatalf("Error loading config: %v", err)
@@ -42,6 +51,20 @@ func main() {
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
 	}
+	err = loggerFile.Close()
+	if err != nil {
+		log.Fatalf("Error closing logfile: %v", err)
+	}
+}
+
+func configureLogFile() (*os.File, error) {
+	logDir := filepath.Join(xdg.StateHome, mergeMateDir)
+	err := os.MkdirAll(logDir, os.ModePerm)
+	if err != nil {
+		return nil, err
+	}
+	logFilePath := filepath.Join(logDir, logFile)
+	return tea.LogToFile(logFilePath, "debug")
 }
 
 func validateConfig(config *AppConfig) error {
@@ -65,15 +88,18 @@ func validateConfig(config *AppConfig) error {
 
 func parseConfig() (*AppConfig, error) {
 	configFilePath := filepath.Join(xdg.ConfigHome, configFile)
-	fileInfo, _ := os.Stat(configFilePath)
-	if fileInfo != nil {
-		// file exists, we can load config
-		err := k.Load(file.Provider(configFilePath), dotenv.Parser())
-		if err != nil {
-			return nil, err
-		}
+	_, err := os.Stat(configFilePath)
+	if err != nil {
+		return nil, err
 	}
-	err := k.Load(env.Provider("", ".", func(s string) string { return s }), nil)
+
+	// file exists, we can load config
+	err = k.Load(file.Provider(configFilePath), dotenv.Parser())
+	if err != nil {
+		return nil, err
+	}
+
+	err = k.Load(env.Provider("", ".", func(s string) string { return s }), nil)
 	if err != nil {
 		return nil, err
 	}
