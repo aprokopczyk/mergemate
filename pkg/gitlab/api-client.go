@@ -50,6 +50,8 @@ type MergeRequestDetails struct {
 	ShouldRemoveSourceBranch  bool   `json:"should_remove_source_branch"`
 	CommitsBehind             int    `json:"diverged_commits_count"`
 	Sha                       string `json:"sha"`
+	RebaseInProgress          bool   `json:"rebase_in_progress"`
+	RebaseError               string `json:"merge_error"`
 }
 
 type MergeRequestNote struct {
@@ -155,23 +157,25 @@ func (client *ApiClient) CreateMergeRequest(sourceBranch string, targetBranch st
 	return result.Iid
 }
 
-func (client *ApiClient) MergeMergeRequest(mergeRequestIid int) MergeRequestDetails {
+func (client *ApiClient) MergeMergeRequest(mergeRequestIid int) (*MergeRequestDetails, error) {
 	var mergeRequest MergeRequestDetails
-	_, err := client.resty.R().
+	resp, err := client.resty.R().
 		SetPathParam(projectIdParam, client.projectName).
 		SetPathParam(mergeRequestIdParam, strconv.Itoa(mergeRequestIid)).
-		SetQueryParam(mergeWhenPipelineSucceeds, "true").
+		SetQueryParam(mergeWhenPipelineSucceeds, "false").
 		SetQueryParam(shouldRemoveSourceBranch, "true").
 		SetResult(&mergeRequest).
 		Put(MergeRequestsMergeEndpoint)
 	if err != nil {
-		fmt.Println("Error when executing query." + err.Error())
+		return nil, err
 	}
 
-	return mergeRequest
+	resp.Body()
+
+	return &mergeRequest, nil
 }
 
-func (client *ApiClient) getMergeRequestDetails(mergeRequestIid int) MergeRequestDetails {
+func (client *ApiClient) GetMergeRequestDetails(mergeRequestIid int) (*MergeRequestDetails, error) {
 	var mergeRequest MergeRequestDetails
 	_, err := client.resty.R().
 		SetPathParam(projectIdParam, client.projectName).
@@ -182,12 +186,12 @@ func (client *ApiClient) getMergeRequestDetails(mergeRequestIid int) MergeReques
 		Get(MergeRequestsDetailsEndpoint)
 
 	if err != nil {
-		fmt.Println("Error when executing query." + err.Error())
+		return nil, err
 	}
-	return mergeRequest
+	return &mergeRequest, nil
 }
 
-func (client *ApiClient) RebaseMergeRequest(mergeRequestIid int, shouldSkipCi bool) {
+func (client *ApiClient) RebaseMergeRequest(mergeRequestIid int, shouldSkipCi bool) error {
 	var mergeRequest MergeRequestDetails
 	_, err := client.resty.R().
 		SetPathParam(projectIdParam, client.projectName).
@@ -195,10 +199,7 @@ func (client *ApiClient) RebaseMergeRequest(mergeRequestIid int, shouldSkipCi bo
 		SetQueryParam("skip_ci", strconv.FormatBool(shouldSkipCi)).
 		SetResult(&mergeRequest).
 		Put(MergeRequestsRebaseEndpoint)
-
-	if err != nil {
-		fmt.Println("Error when executing query." + err.Error())
-	}
+	return err
 }
 
 type MergeRequestPipeline struct {
@@ -210,7 +211,7 @@ type MergeRequestPipeline struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func (client *ApiClient) GetMergeRequestPipelines(mergeRequestIid int) []MergeRequestPipeline {
+func (client *ApiClient) GetMergeRequestPipelines(mergeRequestIid int) ([]MergeRequestPipeline, error) {
 	var pipelines []MergeRequestPipeline
 	_, err := client.resty.R().
 		SetResult(&pipelines).
@@ -221,13 +222,13 @@ func (client *ApiClient) GetMergeRequestPipelines(mergeRequestIid int) []MergeRe
 		Get(MergeRequestsPipelinesEndpoint)
 
 	if err != nil {
-		fmt.Println("Error when executing query." + err.Error())
+		return nil, err
 	}
 
 	sort.SliceStable(pipelines, func(i, j int) bool {
 		return pipelines[i].CreatedAt.Unix() > pipelines[j].CreatedAt.Unix()
 	})
-	return pipelines
+	return pipelines, nil
 }
 
 func New(gitlabUrl string, projectName string, branchPrefix string, userName string, apiToken string) *ApiClient {

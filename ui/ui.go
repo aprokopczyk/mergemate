@@ -56,7 +56,7 @@ func (ui *UI) Init() tea.Cmd {
 func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
-	case tabs.MergeAutomaticallyStatus:
+	case tabs.MergeAutomaticallyStatus, tabs.AutomaticMergeResult:
 		componentModel, componentCommand := ui.tabContent[mergeRequestsTab].Update(msg)
 		ui.tabContent[mergeRequestsTab] = componentModel
 		if componentCommand != nil {
