@@ -3,6 +3,7 @@ package tabs
 import (
 	"github.com/aprokopczyk/mergemate/pkg/gitlab"
 	"github.com/aprokopczyk/mergemate/ui/colors"
+	"github.com/aprokopczyk/mergemate/ui/context"
 	"github.com/aprokopczyk/mergemate/ui/keys"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -24,8 +25,7 @@ type BranchTable struct {
 	branchesList     list.Model
 	flexTable        table.Model
 	keys             keys.BranchKeyMap
-	totalMargin      int
-	totalWidth       int
+	context          *context.AppContext
 	gitlabClient     *gitlab.ApiClient
 	branches         []gitlab.Branch
 	showMergeTargets bool
@@ -39,7 +39,7 @@ func (i branchItem) Title() string       { return i.name }
 func (i branchItem) Description() string { return i.name }
 func (i branchItem) FilterValue() string { return i.name }
 
-func NewBranchTable(apiClient *gitlab.ApiClient, totalMargin int) *BranchTable {
+func NewBranchTable(apiClient *gitlab.ApiClient, context *context.AppContext) *BranchTable {
 	helpModel := help.New()
 	helpModel.ShowAll = true
 	return &BranchTable{
@@ -54,7 +54,7 @@ func NewBranchTable(apiClient *gitlab.ApiClient, totalMargin int) *BranchTable {
 		branchesList:     createList(),
 		keys:             keys.BranchHelp(),
 		gitlabClient:     apiClient,
-		totalMargin:      totalMargin,
+		context:          context,
 		branches:         []gitlab.Branch{},
 		showMergeTargets: false,
 	}
@@ -117,10 +117,8 @@ func (m *BranchTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
 		m.flexTable = m.flexTable.WithRows(rows)
 		m.branchesList.SetItems(targetBranches)
 		m.branches = msg
-	case tea.WindowSizeMsg:
-		m.totalWidth = msg.Width
+	case context.UpdatedContextMessage:
 		m.recalculateComponents()
-		cmds = append(cmds, tea.ClearScreen)
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keys.MergeAutomatically):
@@ -165,6 +163,7 @@ func (m *BranchTable) recalculateComponents() {
 	m.flexTable = m.flexTable.WithTargetWidth(tableWidth)
 	v := m.contentSize() - tableWidth
 	m.branchesList.SetWidth(v)
+	m.branchesList.SetHeight(m.context.MainContentHeight)
 }
 
 func (m *BranchTable) tableSize() int {
@@ -176,7 +175,7 @@ func (m *BranchTable) tableSize() int {
 }
 
 func (m *BranchTable) contentSize() int {
-	var contentSize = m.totalWidth - m.totalMargin
+	var contentSize = m.context.WindowWidth - m.context.Styles.Tabs.Content.GetHorizontalFrameSize()
 	return contentSize
 }
 
@@ -190,7 +189,9 @@ func (m *BranchTable) FullHelp() []key.Binding {
 
 func (m *BranchTable) View() string {
 	if m.showMergeTargets {
-		return lipgloss.JoinHorizontal(lipgloss.Top, m.flexTable.View(), m.branchesList.View())
+		view := m.branchesList.View()
+		lipgloss.Height(view)
+		return lipgloss.JoinHorizontal(lipgloss.Top, m.flexTable.View(), view)
 	}
 	return m.flexTable.View()
 }

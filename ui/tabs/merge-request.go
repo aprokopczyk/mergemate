@@ -3,6 +3,7 @@ package tabs
 import (
 	"github.com/aprokopczyk/mergemate/pkg/gitlab"
 	"github.com/aprokopczyk/mergemate/ui/colors"
+	"github.com/aprokopczyk/mergemate/ui/context"
 	"github.com/aprokopczyk/mergemate/ui/keys"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -42,13 +43,12 @@ type MergeRequestTable struct {
 	flexTable     table.Model
 	mrMetadata    map[int]RequestMetadata
 	mergeRequests []gitlab.MergeRequestDetails
-	totalMargin   int
-	totalWidth    int
+	context       *context.AppContext
 	gitlabClient  *gitlab.ApiClient
 	keys          keys.MergeRequestKeyMap
 }
 
-func NewMergeRequestTable(apiClient *gitlab.ApiClient, totalMargin int) *MergeRequestTable {
+func NewMergeRequestTable(apiClient *gitlab.ApiClient, context *context.AppContext) *MergeRequestTable {
 	return &MergeRequestTable{
 		flexTable: table.New([]table.Column{
 			table.NewFlexColumn(columnKeyMergeRequest, "Merge request", 1),
@@ -61,7 +61,7 @@ func NewMergeRequestTable(apiClient *gitlab.ApiClient, totalMargin int) *MergeRe
 			WithBaseStyle(lipgloss.NewStyle().Align(lipgloss.Left).BorderForeground(colors.Emerald600)).
 			WithPageSize(10),
 		gitlabClient: apiClient,
-		totalMargin:  totalMargin,
+		context:      context,
 		mrMetadata:   make(map[int]RequestMetadata),
 		keys:         keys.MergeRequestHelp(),
 	}
@@ -230,10 +230,8 @@ func (m *MergeRequestTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
 		}
 		cmds = append(cmds, m.triggerAutomaticMerge(toBeMerged))
 		m.redrawTable()
-	case tea.WindowSizeMsg:
-		m.totalWidth = msg.Width
+	case context.UpdatedContextMessage:
 		m.recalculateTable()
-		cmds = append(cmds, tea.ClearScreen)
 	}
 
 	return m, tea.Batch(cmds...)
@@ -255,7 +253,7 @@ func (m *MergeRequestTable) redrawTable() {
 }
 
 func (m *MergeRequestTable) recalculateTable() {
-	m.flexTable = m.flexTable.WithTargetWidth(m.totalWidth - m.totalMargin)
+	m.flexTable = m.flexTable.WithTargetWidth(m.context.WindowWidth - m.context.Styles.Tabs.Content.GetHorizontalFrameSize())
 }
 
 func (m *MergeRequestTable) FullHelp() []key.Binding {
@@ -263,5 +261,5 @@ func (m *MergeRequestTable) FullHelp() []key.Binding {
 }
 
 func (m *MergeRequestTable) View() string {
-	return m.flexTable.View() + "\n"
+	return m.flexTable.View()
 }

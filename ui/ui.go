@@ -3,7 +3,9 @@ package ui
 import (
 	"github.com/aprokopczyk/mergemate/pkg/gitlab"
 	"github.com/aprokopczyk/mergemate/ui/colors"
+	"github.com/aprokopczyk/mergemate/ui/context"
 	"github.com/aprokopczyk/mergemate/ui/keys"
+	"github.com/aprokopczyk/mergemate/ui/styles"
 	"github.com/aprokopczyk/mergemate/ui/tabs"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -24,7 +26,7 @@ type UI struct {
 	help         help.Model
 	activeTab    int
 	gitlabClient *gitlab.ApiClient
-	totalWidth   int
+	context      context.AppContext
 }
 
 func New(apiClient *gitlab.ApiClient) *UI {
@@ -35,8 +37,10 @@ func New(apiClient *gitlab.ApiClient) *UI {
 		tabContent:   make([]tabs.TabContent, lastTab),
 		activeTab:    mergeRequestsTab,
 		gitlabClient: apiClient,
-		totalWidth:   0,
-		help:         helpModel,
+		context: context.AppContext{
+			Styles: styles.NewStyles(),
+		},
+		help: helpModel,
 	}
 
 	return ui
@@ -45,9 +49,9 @@ func New(apiClient *gitlab.ApiClient) *UI {
 func (ui *UI) Init() tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 	ui.tabs[mergeRequestsTab] = "Merge requests"
-	ui.tabContent[mergeRequestsTab] = tabs.NewMergeRequestTable(ui.gitlabClient, tabContentsStyle.GetHorizontalFrameSize())
+	ui.tabContent[mergeRequestsTab] = tabs.NewMergeRequestTable(ui.gitlabClient, &ui.context)
 	ui.tabs[branchesTab] = "Your branches"
-	ui.tabContent[branchesTab] = tabs.NewBranchTable(ui.gitlabClient, tabContentsStyle.GetHorizontalFrameSize())
+	ui.tabContent[branchesTab] = tabs.NewBranchTable(ui.gitlabClient, &ui.context)
 	cmds = append(cmds, ui.tabContent[mergeRequestsTab].Init())
 	cmds = append(cmds, ui.tabContent[branchesTab].Init())
 	return tea.Batch(cmds...)
@@ -84,12 +88,24 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, tea.Quit)
 		}
 	case tea.WindowSizeMsg:
-		ui.totalWidth = msg.Width
+		ui.context.WindowHeight = msg.Height
+		ui.context.WindowWidth = msg.Width
+		ui.context.MainContentHeight = msg.Height - styles.TabsHeaderHeight - ui.getHelpHeight()
 		ui.help.Width = msg.Width
-		cmds = append(cmds, triggerOnAll(msg, ui)...)
+		cmds = append(cmds, tea.ClearScreen)
+		cmds = append(cmds, triggerOnAll(context.UpdatedContextMessage{}, ui)...)
 	}
 
 	return ui, tea.Batch(cmds...)
+}
+
+func (ui *UI) getHelpHeight() int {
+	keyMap := keys.GetKeyMap(ui.tabContent[ui.activeTab].FullHelp())
+	height := 0
+	for _, bindings := range keyMap.FullHelp() {
+		height = max(height, len(bindings))
+	}
+	return height + ui.context.Styles.Help.GetVerticalFrameSize()
 }
 
 func triggerOnAll(msg tea.Msg, ui *UI) []tea.Cmd {
@@ -104,25 +120,14 @@ func triggerOnAll(msg tea.Msg, ui *UI) []tea.Cmd {
 	return cmds
 }
 
-var (
-	tabStyle = lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder(), false, true, false, false).
-			Padding(0, 1, 0, 1).
-			BorderForeground(colors.Emerald800)
-	tabSectionStyle = lipgloss.NewStyle().
-			Border(lipgloss.ThickBorder(), false, false, true, false).
-			Padding(1, 0, 0, 2).
-			BorderForeground(colors.Emerald800)
-	tabContentsStyle = lipgloss.NewStyle().Padding(0, 0, 0, 2)
-)
-
 func (ui *UI) View() string {
 	toRender := strings.Builder{}
 
 	var renderedTabs []string
 
+	styleDefinitions := ui.context.Styles
 	for i, t := range ui.tabs {
-		var style = tabStyle.Copy()
+		var style = styleDefinitions.Tabs.TabItem.Copy()
 		isActive := i == ui.activeTab
 		isLast := i == len(ui.tabs)-1
 		if isActive {
@@ -134,11 +139,14 @@ func (ui *UI) View() string {
 
 		renderedTabs = append(renderedTabs, style.Render(t))
 	}
-	toRender.WriteString(tabSectionStyle.Copy().Width(ui.totalWidth).Render(lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)))
+	toRender.WriteString(styleDefinitions.Tabs.Header.Copy().Width(ui.context.WindowWidth).Render(lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)))
 	toRender.WriteString("\n")
-	toRender.WriteString(tabContentsStyle.Copy().Width(ui.totalWidth).Render(ui.tabContent[ui.activeTab].View()))
+	tabsContent := styleDefinitions.Tabs.Content.Copy().Width(ui.context.WindowWidth).Render(ui.tabContent[ui.activeTab].View())
+	toRender.WriteString(tabsContent)
 	toRender.WriteString("\n")
-	toRender.WriteString(tabContentsStyle.Copy().Width(ui.totalWidth).Render(ui.help.View(keys.GetKeyMap(ui.tabContent[ui.activeTab].FullHelp()))))
+	// fill up all available space to push footer to the bottom
+	toRender.WriteString(strings.Repeat("\n", max(0, ui.context.MainContentHeight-lipgloss.Height(tabsContent))))
+	toRender.WriteString(styleDefinitions.Help.Copy().Width(ui.context.WindowWidth).Render(ui.help.View(keys.GetKeyMap(ui.tabContent[ui.activeTab].FullHelp()))))
 	return toRender.String()
 }
 
