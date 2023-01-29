@@ -72,24 +72,6 @@ func (m *MergeRequestTable) listMergeRequests() tea.Msg {
 	return mergeRequests
 }
 
-func (m *MergeRequestTable) rebaseMergeRequest(mergeRequestIid int) tea.Cmd {
-	return func() tea.Msg {
-		pipelines, err := m.gitlabClient.GetMergeRequestPipelines(mergeRequestIid)
-		if err != nil {
-			log.Printf("Error when fetching piplelines for merge request {id = %v}: %v", mergeRequestIid, err)
-			return nil
-		}
-		numberOfPipelines := len(pipelines)
-		var shouldSkipCi = numberOfPipelines > 0 && pipelines[0].Status == "success"
-		err = m.gitlabClient.RebaseMergeRequest(mergeRequestIid, shouldSkipCi)
-		if err != nil {
-			log.Printf("Error when rebasing merge request {id = %v}: %v", mergeRequestIid, err)
-			return nil
-		}
-		return nil
-	}
-}
-
 type MergeAutomaticallyStatus struct {
 	mergeRequestIid             int
 	shouldBeMergedAutomatically bool
@@ -187,16 +169,6 @@ func (m *MergeRequestTable) triggerAutomaticMerge(mergeRequestIids []int) tea.Cm
 	})
 }
 
-func (m *MergeRequestTable) mergeMergeRequest(mergeRequestIid int) tea.Cmd {
-	return func() tea.Msg {
-		_, err := m.gitlabClient.MergeMergeRequest(mergeRequestIid)
-		if err != nil {
-			return nil
-		}
-		return nil
-	}
-}
-
 func (m *MergeRequestTable) Init() tea.Cmd {
 	return tea.Batch(m.listMergeRequests, m.triggerAutomaticMerge([]int{}))
 }
@@ -261,15 +233,6 @@ func (m *MergeRequestTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
 		m.totalWidth = msg.Width
 		m.recalculateTable()
 		cmds = append(cmds, tea.ClearScreen)
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "r":
-			mrToRebase := m.flexTable.HighlightedRow().Data[columnKeyMergeRequestMetadata].(gitlab.MergeRequestDetails)
-			cmds = append(cmds, m.rebaseMergeRequest(mrToRebase.Iid))
-		case "m":
-			mrToMerge := m.flexTable.HighlightedRow().Data[columnKeyMergeRequestMetadata].(gitlab.MergeRequestDetails)
-			cmds = append(cmds, m.mergeMergeRequest(mrToMerge.Iid))
-		}
 	}
 
 	return m, tea.Batch(cmds...)
@@ -295,10 +258,7 @@ func (m *MergeRequestTable) recalculateTable() {
 }
 
 func (m *MergeRequestTable) FullHelp() []key.Binding {
-	return []key.Binding{
-		m.keys.Rebase,
-		m.keys.Merge,
-	}
+	return []key.Binding{}
 }
 
 func (m *MergeRequestTable) View() string {
