@@ -18,6 +18,8 @@ const tokenHeader = "PRIVATE-TOKEN"
 const mergeRequestIdParam = "merge_request_iid"
 const mergeWhenPipelineSucceeds = "merge_when_pipeline_succeeds"
 const shouldRemoveSourceBranch = "should_remove_source_branch"
+const sha = "sha"
+const skipCi = "skip_ci"
 const includeDivergedCommits = "include_diverged_commits_count"
 const includeRebaseInProgress = "include_rebase_in_progress"
 const MergeRequestsEndpoint = "/api/v4/projects/{" + projectIdParam + "}/merge_requests"
@@ -157,20 +159,19 @@ func (client *ApiClient) CreateMergeRequest(sourceBranch string, targetBranch st
 	return result.Iid
 }
 
-func (client *ApiClient) MergeMergeRequest(mergeRequestIid int) (*MergeRequestDetails, error) {
+func (client *ApiClient) MergeMergeRequest(mergeRequestIid int, currentSha string) (*MergeRequestDetails, error) {
 	var mergeRequest MergeRequestDetails
-	resp, err := client.resty.R().
+	_, err := client.resty.R().
 		SetPathParam(projectIdParam, client.projectName).
 		SetPathParam(mergeRequestIdParam, strconv.Itoa(mergeRequestIid)).
 		SetQueryParam(mergeWhenPipelineSucceeds, "false").
 		SetQueryParam(shouldRemoveSourceBranch, "true").
+		SetQueryParam(sha, currentSha).
 		SetResult(&mergeRequest).
 		Put(MergeRequestsMergeEndpoint)
 	if err != nil {
 		return nil, err
 	}
-
-	resp.Body()
 
 	return &mergeRequest, nil
 }
@@ -196,7 +197,7 @@ func (client *ApiClient) RebaseMergeRequest(mergeRequestIid int, shouldSkipCi bo
 	_, err := client.resty.R().
 		SetPathParam(projectIdParam, client.projectName).
 		SetPathParam(mergeRequestIdParam, strconv.Itoa(mergeRequestIid)).
-		SetQueryParam("skip_ci", strconv.FormatBool(shouldSkipCi)).
+		SetQueryParam(skipCi, strconv.FormatBool(shouldSkipCi)).
 		SetResult(&mergeRequest).
 		Put(MergeRequestsRebaseEndpoint)
 	return err

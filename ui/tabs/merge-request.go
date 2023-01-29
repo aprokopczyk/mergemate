@@ -107,22 +107,22 @@ func (m *MergeRequestTable) triggerAutomaticMerge(mergeRequestIids []int) tea.Cm
 		var rebasing []int
 
 		for _, mergeRequestIid := range mergeRequestIids {
-			details, err := m.gitlabClient.GetMergeRequestDetails(mergeRequestIid)
+			mergeRequest, err := m.gitlabClient.GetMergeRequestDetails(mergeRequestIid)
 			if err != nil {
 				log.Printf("Fetching merge request details failed %v", err)
 				continue
 			}
-			if details.RebaseInProgress {
-				log.Printf("Merge request {id = %v, title=%v} is being rebased.", details.Iid, details.Title)
+			if mergeRequest.RebaseInProgress {
+				log.Printf("Merge request {id = %v, title=%v} is being rebased.", mergeRequest.Iid, mergeRequest.Title)
 				mrStatus[mergeRequestIid] = "Rebase in progress"
 				continue
-			} else if details.RebaseError != "" {
+			} else if mergeRequest.RebaseError != "" {
 				mrStatus[mergeRequestIid] = "Merge conflict"
 				continue
 			}
 			pipelines, err := m.gitlabClient.GetMergeRequestPipelines(mergeRequestIid)
 			if err != nil {
-				log.Printf("Error when fetching pipeline for merge request{id = %v, title=%v}: %v", mergeRequestIid, details.Title, err)
+				log.Printf("Error when fetching pipeline for merge request{id = %v, title=%v}: %v", mergeRequestIid, mergeRequest.Title, err)
 			}
 			if gitlab.IsPipelineRunning(pipelines) {
 				mrStatus[mergeRequestIid] = "CI running"
@@ -132,23 +132,24 @@ func (m *MergeRequestTable) triggerAutomaticMerge(mergeRequestIids []int) tea.Cm
 				mrStatus[mergeRequestIid] = "CI failed"
 				continue
 			}
-			if details.CommitsBehind > 0 {
-				log.Printf("Merge request {id = %v, title=%v} is behind target branch by %v commits, it will be rebased.", mergeRequestIid, details.Title, details.CommitsBehind)
+			if mergeRequest.CommitsBehind > 0 {
+				log.Printf("Merge request {id = %v, title=%v} is behind target branch by %v commits, it will be rebased.", mergeRequestIid, mergeRequest.Title, mergeRequest.CommitsBehind)
 				// we will rebase outside loop, in case there is mr that could be merged, we'll need to rebase only once
 				rebasing = append(rebasing, mergeRequestIid)
 				continue
 			}
 			if gitlab.IsAutomaticMergeAllowed(pipelines) {
 				// hurray, we can merge it!
-				log.Printf("Merging merge request {id = %v, title=%v}.", mergeRequestIid, details.Title)
-				request, err := m.gitlabClient.MergeMergeRequest(mergeRequestIid)
+				log.Printf("Merging merge request {id = %v, title=%v}.", mergeRequestIid, mergeRequest.Title)
+				// we pass sha to make sure that nothing was pushed in the meantime
+				request, err := m.gitlabClient.MergeMergeRequest(mergeRequestIid, mergeRequest.Sha)
 				if err != nil {
-					log.Printf("Error when merging merge request {id = %v, title=%v}: %v ", mergeRequestIid, details.Title, err)
+					log.Printf("Error when merging merge request {id = %v, title=%v}: %v ", mergeRequestIid, mergeRequest.Title, err)
 					mrStatus[mergeRequestIid] = "Merge failed"
 					return nil
 				}
 				if request.State == "merged" {
-					log.Printf("Merged merge request {id = %v, title=%v}.", mergeRequestIid, details.Title)
+					log.Printf("Merged merge request {id = %v, title=%v}.", mergeRequestIid, mergeRequest.Title)
 					mrStatus[mergeRequestIid] = merged
 				}
 				continue
