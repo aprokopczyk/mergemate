@@ -35,6 +35,10 @@ type branchItem struct {
 	name string
 }
 
+type mergeRequestCreated struct {
+	iid int
+}
+
 func (i branchItem) Title() string       { return i.name }
 func (i branchItem) Description() string { return i.name }
 func (i branchItem) FilterValue() string { return i.name }
@@ -85,7 +89,9 @@ func (m *BranchTable) createMergeRequest(sourceBranch string, targetBranch strin
 	return func() tea.Msg {
 		mrIid := m.gitlabClient.CreateMergeRequest(sourceBranch, targetBranch, title)
 		m.gitlabClient.CreateMergeRequestNote(mrIid, MergeAutomatically)
-		return nil
+		return mergeRequestCreated{
+			iid: mrIid,
+		}
 	}
 }
 
