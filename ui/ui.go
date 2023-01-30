@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"github.com/aprokopczyk/mergemate/pkg/gitlab"
 	"github.com/aprokopczyk/mergemate/ui/colors"
 	"github.com/aprokopczyk/mergemate/ui/context"
 	"github.com/aprokopczyk/mergemate/ui/keys"
@@ -21,26 +20,22 @@ const (
 )
 
 type UI struct {
-	tabs         []string
-	tabContent   []tabs.TabContent
-	help         help.Model
-	activeTab    int
-	gitlabClient *gitlab.ApiClient
-	context      context.AppContext
+	tabs       []string
+	tabContent []tabs.TabContent
+	help       help.Model
+	activeTab  int
+	context    *context.AppContext
 }
 
-func New(apiClient *gitlab.ApiClient) *UI {
+func New(context *context.AppContext) *UI {
 	helpModel := help.New()
 	helpModel.ShowAll = true
 	ui := &UI{
-		tabs:         make([]string, lastTab),
-		tabContent:   make([]tabs.TabContent, lastTab),
-		activeTab:    mergeRequestsTab,
-		gitlabClient: apiClient,
-		context: context.AppContext{
-			Styles: styles.NewStyles(),
-		},
-		help: helpModel,
+		tabs:       make([]string, lastTab),
+		tabContent: make([]tabs.TabContent, lastTab),
+		activeTab:  mergeRequestsTab,
+		context:    context,
+		help:       helpModel,
 	}
 
 	return ui
@@ -49,9 +44,9 @@ func New(apiClient *gitlab.ApiClient) *UI {
 func (ui *UI) Init() tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 	ui.tabs[mergeRequestsTab] = "Merge requests"
-	ui.tabContent[mergeRequestsTab] = tabs.NewMergeRequestTable(ui.gitlabClient, &ui.context)
+	ui.tabContent[mergeRequestsTab] = tabs.NewMergeRequestTable(ui.context)
 	ui.tabs[branchesTab] = "Your branches"
-	ui.tabContent[branchesTab] = tabs.NewBranchTable(ui.gitlabClient, &ui.context)
+	ui.tabContent[branchesTab] = tabs.NewBranchTable(ui.context)
 	cmds = append(cmds, ui.tabContent[mergeRequestsTab].Init())
 	cmds = append(cmds, ui.tabContent[branchesTab].Init())
 	return tea.Batch(cmds...)

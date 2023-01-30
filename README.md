@@ -17,13 +17,14 @@ Configuration file should consist of key/value pairs separated by equal signs.
 
 Following configuration options are supported:
 
-| Option                  | Required | Description                                                                                                               |
-|-------------------------|----------|---------------------------------------------------------------------------------------------------------------------------|
-| MERGEMATE_GITLAB_URL    | YES      | Your gitlab instance URL                                                                                                  |
-| MERGEMATE_API_TOKEN     | YES      | Your gitlab api token: https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#create-a-personal-access-token |
-| MERGEMATE_USER_NAME     | YES      | Your gitlab user name                                                                                                     |
-| MERGEMATE_PROJECT_NAME  | YES      | Name of the project where merge requests will be managed                                                                  |
-| MERGEMATE_BRANCH_PREFIX | YES      | Branch prefix you use to distinguish your branches from those of your teammates                                           |
+| Option                               | Required | Default value | Description                                                                                                               |
+|--------------------------------------|----------|:--------------|---------------------------------------------------------------------------------------------------------------------------|
+| MERGEMATE_GITLAB_URL                 | YES      | -             | Your gitlab instance URL                                                                                                  |
+| MERGEMATE_API_TOKEN                  | YES      | -             | Your gitlab api token: https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#create-a-personal-access-token |
+| MERGEMATE_USER_NAME                  | YES      | -             | Your gitlab user name                                                                                                     |
+| MERGEMATE_PROJECT_NAME               | YES      | -             | Name of the project where merge requests will be managed                                                                  |
+| MERGEMATE_BRANCH_PREFIX              | YES      | -             | Branch prefix you use to distinguish your branches from those of your teammates                                           |
+| MERGEMATE_MERGE_JOB_INTERVAL_SECONDS | NO       | 60            | Time between two executions of background merge job.                                                                      |
 
 Empty configuration file template:
 ```

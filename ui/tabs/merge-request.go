@@ -44,11 +44,10 @@ type MergeRequestTable struct {
 	mrMetadata    map[int]RequestMetadata
 	mergeRequests []gitlab.MergeRequestDetails
 	context       *context.AppContext
-	gitlabClient  *gitlab.ApiClient
 	keys          keys.MergeRequestKeyMap
 }
 
-func NewMergeRequestTable(apiClient *gitlab.ApiClient, context *context.AppContext) *MergeRequestTable {
+func NewMergeRequestTable(context *context.AppContext) *MergeRequestTable {
 	return &MergeRequestTable{
 		flexTable: table.New([]table.Column{
 			table.NewFlexColumn(columnKeyMergeRequest, "Merge request", 1),
@@ -60,15 +59,14 @@ func NewMergeRequestTable(apiClient *gitlab.ApiClient, context *context.AppConte
 			HeaderStyle(lipgloss.NewStyle().Bold(true)).
 			WithBaseStyle(lipgloss.NewStyle().Align(lipgloss.Left).BorderForeground(colors.Emerald600)).
 			WithPageSize(10),
-		gitlabClient: apiClient,
-		context:      context,
-		mrMetadata:   make(map[int]RequestMetadata),
-		keys:         keys.MergeRequestHelp(),
+		context:    context,
+		mrMetadata: make(map[int]RequestMetadata),
+		keys:       keys.MergeRequestHelp(),
 	}
 }
 
 func (m *MergeRequestTable) listMergeRequests() tea.Msg {
-	mergeRequests := m.gitlabClient.ListMergeRequests()
+	mergeRequests := m.context.GitlabClient.ListMergeRequests()
 	return mergeRequests
 }
 
@@ -79,7 +77,7 @@ type MergeAutomaticallyStatus struct {
 
 func (m *MergeRequestTable) shouldBeMergedAutomatically(mergeRequestIid int) tea.Cmd {
 	return func() tea.Msg {
-		notes := m.gitlabClient.ListMergeRequestNotes(mergeRequestIid)
+		notes := m.context.GitlabClient.ListMergeRequestNotes(mergeRequestIid)
 		var shouldBeMergedAutomatically bool
 		for _, note := range notes {
 			if strings.HasPrefix(note.Body, MergeAutomatically) {
@@ -101,13 +99,13 @@ type AutomaticMergeResult struct {
 const merged = "Merged"
 
 func (m *MergeRequestTable) triggerAutomaticMerge(mergeRequestIids []int) tea.Cmd {
-	return tea.Tick(time.Second*30, func(t time.Time) tea.Msg {
+	return tea.Tick(time.Second*time.Duration(m.context.MergeJobInterval), func(t time.Time) tea.Msg {
 		log.Printf("Processing merge requests: %v", mergeRequestIids)
 		mrStatus := make(map[int]string)
 		var rebasing []int
 
 		for _, mergeRequestIid := range mergeRequestIids {
-			mergeRequest, err := m.gitlabClient.GetMergeRequestDetails(mergeRequestIid)
+			mergeRequest, err := m.context.GitlabClient.GetMergeRequestDetails(mergeRequestIid)
 			if err != nil {
 				log.Printf("Fetching merge request details failed %v", err)
 				continue
@@ -120,7 +118,7 @@ func (m *MergeRequestTable) triggerAutomaticMerge(mergeRequestIids []int) tea.Cm
 				mrStatus[mergeRequestIid] = "Merge conflict"
 				continue
 			}
-			pipelines, err := m.gitlabClient.GetMergeRequestPipelines(mergeRequestIid)
+			pipelines, err := m.context.GitlabClient.GetMergeRequestPipelines(mergeRequestIid)
 			if err != nil {
 				log.Printf("Error when fetching pipeline for merge request{id = %v, title=%v}: %v", mergeRequestIid, mergeRequest.Title, err)
 			}
@@ -142,7 +140,7 @@ func (m *MergeRequestTable) triggerAutomaticMerge(mergeRequestIids []int) tea.Cm
 				// hurray, we can merge it!
 				log.Printf("Merging merge request {id = %v, title=%v}.", mergeRequestIid, mergeRequest.Title)
 				// we pass sha to make sure that nothing was pushed in the meantime
-				request, err := m.gitlabClient.MergeMergeRequest(mergeRequestIid, mergeRequest.Sha)
+				request, err := m.context.GitlabClient.MergeMergeRequest(mergeRequestIid, mergeRequest.Sha)
 				if err != nil {
 					log.Printf("Error when merging merge request {id = %v, title=%v}: %v ", mergeRequestIid, mergeRequest.Title, err)
 					mrStatus[mergeRequestIid] = "Merge failed"
@@ -158,7 +156,7 @@ func (m *MergeRequestTable) triggerAutomaticMerge(mergeRequestIids []int) tea.Cm
 
 		for _, mrIid := range rebasing {
 			mrStatus[mrIid] = "Rebase in progress"
-			err := m.gitlabClient.RebaseMergeRequest(mrIid, true)
+			err := m.context.GitlabClient.RebaseMergeRequest(mrIid, true)
 			if err != nil {
 				log.Printf("Error when rebasing merge request {id = %v}: %v", mrIid, err)
 			}

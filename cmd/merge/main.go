@@ -5,9 +5,12 @@ import (
 	"github.com/adrg/xdg"
 	"github.com/aprokopczyk/mergemate/pkg/gitlab"
 	"github.com/aprokopczyk/mergemate/ui"
+	"github.com/aprokopczyk/mergemate/ui/context"
+	"github.com/aprokopczyk/mergemate/ui/styles"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/dotenv"
+	"github.com/knadh/koanf/providers/confmap"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
 	"log"
@@ -16,11 +19,12 @@ import (
 )
 
 type AppConfig struct {
-	GitlabUrl    string `koanf:"MERGEMATE_GITLAB_URL"`
-	ProjectName  string `koanf:"MERGEMATE_PROJECT_NAME"`
-	UserName     string `koanf:"MERGEMATE_USER_NAME"`
-	BranchPrefix string `koanf:"MERGEMATE_BRANCH_PREFIX"`
-	ApiToken     string `koanf:"MERGEMATE_API_TOKEN"`
+	GitlabUrl               string `koanf:"MERGEMATE_GITLAB_URL"`
+	ProjectName             string `koanf:"MERGEMATE_PROJECT_NAME"`
+	UserName                string `koanf:"MERGEMATE_USER_NAME"`
+	BranchPrefix            string `koanf:"MERGEMATE_BRANCH_PREFIX"`
+	ApiToken                string `koanf:"MERGEMATE_API_TOKEN"`
+	MergeJobIntervalSeconds int    `koanf:"MERGEMATE_MERGE_JOB_INTERVAL_SECONDS"`
 }
 
 const configFile = "/mergemate/mergemate_config.env"
@@ -46,7 +50,12 @@ func main() {
 		log.Fatalf("Invalid config: %v.", err)
 	}
 	client := gitlab.New(config.GitlabUrl, config.ProjectName, config.BranchPrefix, config.UserName, config.ApiToken)
-	p := tea.NewProgram(ui.New(client), tea.WithAltScreen())
+	var appContext = context.AppContext{
+		Styles:           styles.NewStyles(),
+		GitlabClient:     client,
+		MergeJobInterval: config.MergeJobIntervalSeconds,
+	}
+	p := tea.NewProgram(ui.New(&appContext), tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
@@ -83,12 +92,24 @@ func validateConfig(config *AppConfig) error {
 	if len(config.ApiToken) == 0 {
 		return errors.New("please provide MERGEMATE_API_TOKEN config entry")
 	}
+	if config.MergeJobIntervalSeconds <= 0 {
+		return errors.New("MERGEMATE_MERGE_JOB_INTERVAL_SECONDS has to be bigger than 0")
+	}
 	return nil
 }
 
 func parseConfig() (*AppConfig, error) {
 	configFilePath := filepath.Join(xdg.ConfigHome, configFile)
-	_, err := os.Stat(configFilePath)
+
+	// init default values
+	err := k.Load(confmap.Provider(map[string]interface{}{
+		"MERGEMATE_MERGE_JOB_INTERVAL_SECONDS": 60,
+	}, ""), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = os.Stat(configFilePath)
 	if err != nil {
 		return nil, err
 	}

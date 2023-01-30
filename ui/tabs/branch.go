@@ -26,7 +26,6 @@ type BranchTable struct {
 	flexTable        table.Model
 	keys             keys.BranchKeyMap
 	context          *context.AppContext
-	gitlabClient     *gitlab.ApiClient
 	branches         []gitlab.Branch
 	showMergeTargets bool
 }
@@ -43,7 +42,7 @@ func (i branchItem) Title() string       { return i.name }
 func (i branchItem) Description() string { return i.name }
 func (i branchItem) FilterValue() string { return i.name }
 
-func NewBranchTable(apiClient *gitlab.ApiClient, context *context.AppContext) *BranchTable {
+func NewBranchTable(context *context.AppContext) *BranchTable {
 	helpModel := help.New()
 	helpModel.ShowAll = true
 	return &BranchTable{
@@ -57,7 +56,6 @@ func NewBranchTable(apiClient *gitlab.ApiClient, context *context.AppContext) *B
 			WithPageSize(10),
 		branchesList:     createList(),
 		keys:             keys.BranchHelp(),
-		gitlabClient:     apiClient,
 		context:          context,
 		branches:         []gitlab.Branch{},
 		showMergeTargets: false,
@@ -76,7 +74,7 @@ func createList() list.Model {
 }
 
 func (m *BranchTable) listBranches() tea.Msg {
-	branches := m.gitlabClient.ListBranches()
+	branches := m.context.GitlabClient.ListBranches()
 
 	sort.SliceStable(branches, func(i, j int) bool {
 		return branches[i].Commit.AuthoredDate.Unix() > branches[j].Commit.AuthoredDate.Unix()
@@ -87,8 +85,8 @@ func (m *BranchTable) listBranches() tea.Msg {
 
 func (m *BranchTable) createMergeRequest(sourceBranch string, targetBranch string, title string) tea.Cmd {
 	return func() tea.Msg {
-		mrIid := m.gitlabClient.CreateMergeRequest(sourceBranch, targetBranch, title)
-		m.gitlabClient.CreateMergeRequestNote(mrIid, MergeAutomatically)
+		mrIid := m.context.GitlabClient.CreateMergeRequest(sourceBranch, targetBranch, title)
+		m.context.GitlabClient.CreateMergeRequestNote(mrIid, MergeAutomatically)
 		return mergeRequestCreated{
 			iid: mrIid,
 		}
@@ -110,7 +108,7 @@ func (m *BranchTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
 		var rows []table.Row
 		var targetBranches []list.Item
 		for i := 0; i < len(msg); i++ {
-			if strings.HasPrefix(msg[i].Name, m.gitlabClient.BranchPrefix) {
+			if strings.HasPrefix(msg[i].Name, m.context.GitlabClient.BranchPrefix) {
 				rows = append(rows, table.NewRow(table.RowData{
 					columnKeyBranchName:     msg[i].Name,
 					columnKeyLastCommit:     msg[i].Commit.AuthoredDate,
