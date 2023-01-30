@@ -59,21 +59,6 @@ func (ui *UI) Init() tea.Cmd {
 
 func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
-	switch msg := msg.(type) {
-	case tabs.MergeAutomaticallyStatus, tabs.AutomaticMergeResult:
-		componentModel, componentCommand := ui.tabContent[mergeRequestsTab].Update(msg)
-		ui.tabContent[mergeRequestsTab] = componentModel
-		if componentCommand != nil {
-			cmds = append(cmds, componentCommand)
-		}
-		break
-	default:
-		componentModel, componentCommand := ui.tabContent[ui.activeTab].Update(msg)
-		ui.tabContent[ui.activeTab] = componentModel
-		if componentCommand != nil {
-			cmds = append(cmds, componentCommand)
-		}
-	}
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -94,6 +79,17 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		ui.help.Width = msg.Width
 		cmds = append(cmds, tea.ClearScreen)
 		cmds = append(cmds, triggerOnAll(context.UpdatedContextMessage{}, ui)...)
+	}
+
+	// key message only to active tab, rest goes to all tabs
+	if _, ok := msg.(tea.KeyMsg); ok {
+		componentModel, componentCommand := ui.tabContent[ui.activeTab].Update(msg)
+		ui.tabContent[ui.activeTab] = componentModel
+		if componentCommand != nil {
+			cmds = append(cmds, componentCommand)
+		}
+	} else {
+		cmds = append(cmds, triggerOnAll(msg, ui)...)
 	}
 
 	return ui, tea.Batch(cmds...)
