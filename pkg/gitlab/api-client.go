@@ -116,19 +116,25 @@ func (client *ApiClient) CreateMergeRequestNote(mergeRequestIid int, noteBody st
 	return note
 }
 
-func (client *ApiClient) ListBranches(namePattern string) []Branch {
-	var branches []Branch
-	_, err := client.resty.R().
-		SetResult(&branches).
-		SetPathParam(projectIdParam, client.projectName).
-		SetQueryParam("regex", namePattern).
-		Get(BranchesEndpoint)
+func (client *ApiClient) ListBranches(namePatterns []string) ([]Branch, error) {
+	var result []Branch
 
-	if err != nil {
-		fmt.Println("Error when executing query." + err.Error())
+	for _, pattern := range namePatterns {
+		var branches []Branch
+		_, err := client.resty.R().
+			SetResult(&branches).
+			SetPathParam(projectIdParam, client.projectName).
+			SetQueryParam("search", "^"+pattern).
+			SetQueryParam("per_page", "1000").
+			Get(BranchesEndpoint)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, branches...)
 	}
 
-	return branches
+	return result, nil
 }
 
 func (client *ApiClient) DeleteBranch(branchName string) {

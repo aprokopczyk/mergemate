@@ -11,8 +11,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
+	"log"
 	"sort"
-	"strings"
 )
 
 const (
@@ -80,24 +80,23 @@ type TargetBranches struct {
 }
 
 func (m *BranchTable) listUsersBranches() tea.Msg {
-	pattern := "^(?i)\\Q" + m.context.UserBranchPrefix + "\\E"
-	branches := m.fetchBranchesWithPattern(pattern)
+	branches := m.fetchBranchesWithPattern([]string{m.context.UserBranchPrefix})
 
 	return UserBranches{branches}
 }
 
 func (m *BranchTable) listTargetBranches() tea.Msg {
-	var patterns []string
-	for _, prefix := range m.context.TargetBranchPrefixes {
-		patterns = append(patterns, "((?i)\\Q"+prefix+"\\E)")
-	}
-	branches := m.fetchBranchesWithPattern(strings.Join(patterns, "|"))
+	branches := m.fetchBranchesWithPattern(m.context.TargetBranchPrefixes)
 
 	return TargetBranches{branches}
 }
 
-func (m *BranchTable) fetchBranchesWithPattern(pattern string) []gitlab.Branch {
-	branches := m.context.GitlabClient.ListBranches(pattern)
+func (m *BranchTable) fetchBranchesWithPattern(patterns []string) []gitlab.Branch {
+	branches, err := m.context.GitlabClient.ListBranches(patterns)
+
+	if err != nil {
+		log.Printf("Error when fetching branches list %v", err)
+	}
 
 	sort.SliceStable(branches, func(i, j int) bool {
 		return branches[i].Commit.AuthoredDate.Unix() > branches[j].Commit.AuthoredDate.Unix()

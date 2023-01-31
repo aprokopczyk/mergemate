@@ -144,7 +144,7 @@ func (m *MergeRequestTable) triggerAutomaticMerge(mergeRequestIids []int) tea.Cm
 				if err != nil {
 					log.Printf("Error when merging merge request {id = %v, title=%v}: %v ", mergeRequestIid, mergeRequest.Title, err)
 					mrStatus[mergeRequestIid] = "Merge failed"
-					return nil
+					continue
 				}
 				if request.State == "merged" {
 					log.Printf("Merged merge request {id = %v, title=%v}.", mergeRequestIid, mergeRequest.Title)
