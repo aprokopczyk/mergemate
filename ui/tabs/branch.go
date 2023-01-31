@@ -26,7 +26,6 @@ type BranchTable struct {
 	flexTable        table.Model
 	keys             keys.BranchKeyMap
 	context          *context.AppContext
-	branches         []gitlab.Branch
 	showMergeTargets bool
 }
 
@@ -57,7 +56,6 @@ func NewBranchTable(context *context.AppContext) *BranchTable {
 		branchesList:     createList(),
 		keys:             keys.BranchHelp(),
 		context:          context,
-		branches:         []gitlab.Branch{},
 		showMergeTargets: false,
 	}
 }
@@ -73,8 +71,33 @@ func createList() list.Model {
 	return model
 }
 
-func (m *BranchTable) listBranches() tea.Msg {
-	branches := m.context.GitlabClient.ListBranches()
+type UserBranches struct {
+	branches []gitlab.Branch
+}
+
+type TargetBranches struct {
+	branches []gitlab.Branch
+}
+
+func (m *BranchTable) listUsersBranches() tea.Msg {
+	pattern := "^(?i)\\Q" + m.context.UserBranchPrefix + "\\E"
+	branches := m.fetchBranchesWithPattern(pattern)
+
+	return UserBranches{branches}
+}
+
+func (m *BranchTable) listTargetBranches() tea.Msg {
+	var patterns []string
+	for _, prefix := range m.context.TargetBranchPrefixes {
+		patterns = append(patterns, "((?i)\\Q"+prefix+"\\E)")
+	}
+	branches := m.fetchBranchesWithPattern(strings.Join(patterns, "|"))
+
+	return TargetBranches{branches}
+}
+
+func (m *BranchTable) fetchBranchesWithPattern(pattern string) []gitlab.Branch {
+	branches := m.context.GitlabClient.ListBranches(pattern)
 
 	sort.SliceStable(branches, func(i, j int) bool {
 		return branches[i].Commit.AuthoredDate.Unix() > branches[j].Commit.AuthoredDate.Unix()
@@ -94,7 +117,7 @@ func (m *BranchTable) createMergeRequest(sourceBranch string, targetBranch strin
 }
 
 func (m *BranchTable) Init() tea.Cmd {
-	return m.listBranches
+	return tea.Batch(m.listUsersBranches, m.listTargetBranches)
 }
 
 func (m *BranchTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
@@ -104,23 +127,32 @@ func (m *BranchTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
-	case []gitlab.Branch:
+	case UserBranches:
 		var rows []table.Row
-		var targetBranches []list.Item
-		for i := 0; i < len(msg); i++ {
-			if strings.HasPrefix(msg[i].Name, m.context.GitlabClient.BranchPrefix) {
-				rows = append(rows, table.NewRow(table.RowData{
-					columnKeyBranchName:     msg[i].Name,
-					columnKeyLastCommit:     msg[i].Commit.AuthoredDate,
-					columnKeyBranchMetadata: msg[i],
-				}))
-			} else {
-				targetBranches = append(targetBranches, branchItem{name: msg[i].Name})
-			}
+		branches := msg.branches
+		for i := 0; i < len(branches); i++ {
+			branch := branches[i]
+			rows = append(rows, table.NewRow(table.RowData{
+				columnKeyBranchName:     branch.Name,
+				columnKeyLastCommit:     branch.Commit.AuthoredDate,
+				columnKeyBranchMetadata: branch,
+			}))
+
 		}
 		m.flexTable = m.flexTable.WithRows(rows)
+	case TargetBranches:
+		var targetBranches []list.Item
+		branches := msg.branches
+		for i := 0; i < len(branches); i++ {
+			branch := branches[i]
+			item := branchItem{name: branch.Name}
+			if branch.Default {
+				targetBranches = append([]list.Item{item}, targetBranches...)
+			} else {
+				targetBranches = append(targetBranches, item)
+			}
+		}
 		m.branchesList.SetItems(targetBranches)
-		m.branches = msg
 	case context.UpdatedContextMessage:
 		m.recalculateComponents()
 	case tea.KeyMsg:
@@ -160,6 +192,8 @@ func (m *BranchTable) changeBranchSelectionVisibility(visible bool) {
 	m.keys.MergeAutomatically.SetEnabled(!visible)
 	m.showMergeTargets = visible
 	m.recalculateComponents()
+	m.branchesList.ResetFilter()
+	m.branchesList.ResetSelected()
 }
 
 func (m *BranchTable) recalculateComponents() {

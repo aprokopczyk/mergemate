@@ -16,13 +16,15 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type AppConfig struct {
 	GitlabUrl               string `koanf:"MERGEMATE_GITLAB_URL"`
 	ProjectName             string `koanf:"MERGEMATE_PROJECT_NAME"`
 	UserName                string `koanf:"MERGEMATE_USER_NAME"`
-	BranchPrefix            string `koanf:"MERGEMATE_BRANCH_PREFIX"`
+	SlbBranchPrefix         string `koanf:"MERGEMATE_SLB_BRANCH_PREFIX"`
+	TargetBranchPrefixes    string `koanf:"MERGEMATE_TARGET_BRANCH_PREFIXES"`
 	ApiToken                string `koanf:"MERGEMATE_API_TOKEN"`
 	MergeJobIntervalSeconds int    `koanf:"MERGEMATE_MERGE_JOB_INTERVAL_SECONDS"`
 }
@@ -49,11 +51,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("Invalid config: %v.", err)
 	}
-	client := gitlab.New(config.GitlabUrl, config.ProjectName, config.BranchPrefix, config.UserName, config.ApiToken)
+	client := gitlab.New(config.GitlabUrl, config.ProjectName, config.UserName, config.ApiToken)
 	var appContext = context.AppContext{
-		Styles:           styles.NewStyles(),
-		GitlabClient:     client,
-		MergeJobInterval: config.MergeJobIntervalSeconds,
+		Styles:               styles.NewStyles(),
+		GitlabClient:         client,
+		MergeJobInterval:     config.MergeJobIntervalSeconds,
+		UserBranchPrefix:     config.SlbBranchPrefix,
+		TargetBranchPrefixes: strings.Split(config.TargetBranchPrefixes, ","),
 	}
 	p := tea.NewProgram(ui.New(&appContext), tea.WithAltScreen())
 
@@ -86,8 +90,8 @@ func validateConfig(config *AppConfig) error {
 	if len(config.UserName) == 0 {
 		return errors.New("please provide MERGEMATE_USER_NAME config entry")
 	}
-	if len(config.BranchPrefix) == 0 {
-		return errors.New("please provide MERGEMATE_BRANCH_PREFIX config entry")
+	if len(config.SlbBranchPrefix) == 0 {
+		return errors.New("please provide MERGEMATE_SLB_BRANCH_PREFIX config entry")
 	}
 	if len(config.ApiToken) == 0 {
 		return errors.New("please provide MERGEMATE_API_TOKEN config entry")

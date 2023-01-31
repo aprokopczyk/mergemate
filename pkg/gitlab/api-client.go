@@ -32,11 +32,10 @@ const BranchesEndpoint = "/api/v4/projects/{" + projectIdParam + "}/repository/b
 const DeleteBranchEndpoint = "/api/v4/projects/{" + projectIdParam + "}/repository/branches/{" + branchIdParam + "}"
 
 type ApiClient struct {
-	resty        *resty.Client
-	projectName  string
-	userName     string
-	BranchPrefix string
-	apiToken     string
+	resty       *resty.Client
+	projectName string
+	userName    string
+	apiToken    string
 }
 type MergeRequestDetails struct {
 	Id                        int    `json:"id"`
@@ -66,8 +65,9 @@ type CommitDetails struct {
 	Message      string    `json:"message"`
 }
 type Branch struct {
-	Name   string        `json:"name"`
-	Commit CommitDetails `json:"commit"`
+	Name    string        `json:"name"`
+	Default bool          `json:"default"`
+	Commit  CommitDetails `json:"commit"`
 }
 
 func (client *ApiClient) ListMergeRequests() []MergeRequestDetails {
@@ -116,11 +116,12 @@ func (client *ApiClient) CreateMergeRequestNote(mergeRequestIid int, noteBody st
 	return note
 }
 
-func (client *ApiClient) ListBranches() []Branch {
+func (client *ApiClient) ListBranches(namePattern string) []Branch {
 	var branches []Branch
 	_, err := client.resty.R().
 		SetResult(&branches).
 		SetPathParam(projectIdParam, client.projectName).
+		SetQueryParam("regex", namePattern).
 		Get(BranchesEndpoint)
 
 	if err != nil {
@@ -232,13 +233,12 @@ func (client *ApiClient) GetMergeRequestPipelines(mergeRequestIid int) ([]MergeR
 	return pipelines, nil
 }
 
-func New(gitlabUrl string, projectName string, branchPrefix string, userName string, apiToken string) *ApiClient {
+func New(gitlabUrl string, projectName string, userName string, apiToken string) *ApiClient {
 	client := &ApiClient{
-		resty:        createClient(gitlabUrl, apiToken),
-		projectName:  projectName,
-		BranchPrefix: branchPrefix,
-		userName:     userName,
-		apiToken:     apiToken,
+		resty:       createClient(gitlabUrl, apiToken),
+		projectName: projectName,
+		userName:    userName,
+		apiToken:    apiToken,
 	}
 	return client
 }

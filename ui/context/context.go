@@ -6,13 +6,15 @@ import (
 )
 
 type AppContext struct {
-	MainContentHeight int
-	HelpHeight        int
-	WindowWidth       int
-	WindowHeight      int
-	MergeJobInterval  int
-	Styles            styles.Styles
-	GitlabClient      *gitlab.ApiClient
+	MainContentHeight    int
+	HelpHeight           int
+	WindowWidth          int
+	WindowHeight         int
+	MergeJobInterval     int
+	Styles               styles.Styles
+	GitlabClient         *gitlab.ApiClient
+	UserBranchPrefix     string
+	TargetBranchPrefixes []string
 }
 
 type UpdatedContextMessage struct {
