@@ -4,7 +4,7 @@ A TUI (text-based user interface) app that helps manage your merge requests on G
 # Building
 1. [Intall go 1.19](https://go.dev/doc/install) 
 2. checkout repository
-3. Run `go build -o mergeman cmd/merge/main.go` 
+3. Run `go build -o mergemate cmd/merge/main.go` 
 
 # Configuration
 mergemate can be configured through configuration file and environment variables. Both approaches can be mixed together.
