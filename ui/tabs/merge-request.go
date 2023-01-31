@@ -92,19 +92,19 @@ func (m *MergeRequestTable) shouldBeMergedAutomatically(mergeRequestIid int) tea
 	}
 }
 
-type AutomaticMergeResult struct {
+type MergeRequestProcessingResult struct {
 	mrStatus map[int]string
 }
 
 const merged = "Merged"
 
-func (m *MergeRequestTable) triggerAutomaticMerge(mergeRequestIids []int) tea.Cmd {
+func (m *MergeRequestTable) processMergeRequests(mergeRequests map[int]bool) tea.Cmd {
 	return tea.Tick(time.Second*time.Duration(m.context.MergeJobInterval), func(t time.Time) tea.Msg {
-		log.Printf("Processing merge requests: %v", mergeRequestIids)
+		log.Printf("Processing merge requests: %v", mergeRequests)
 		mrStatus := make(map[int]string)
 		var rebasing []int
 
-		for _, mergeRequestIid := range mergeRequestIids {
+		for mergeRequestIid, shouldBeMerged := range mergeRequests {
 			mergeRequest, err := m.context.GitlabClient.GetMergeRequestDetails(mergeRequestIid)
 			if err != nil {
 				log.Printf("Fetching merge request details failed %v", err)
@@ -130,13 +130,18 @@ func (m *MergeRequestTable) triggerAutomaticMerge(mergeRequestIids []int) tea.Cm
 				mrStatus[mergeRequestIid] = "CI failed"
 				continue
 			}
-			if mergeRequest.CommitsBehind > 0 {
+			isBehindTargetBranch := mergeRequest.CommitsBehind > 0
+			if shouldBeMerged && isBehindTargetBranch {
 				log.Printf("Merge request {id = %v, title=%v} is behind target branch by %v commits, it will be rebased.", mergeRequestIid, mergeRequest.Title, mergeRequest.CommitsBehind)
 				// we will rebase outside loop, in case there is mr that could be merged, we'll need to rebase only once
 				rebasing = append(rebasing, mergeRequestIid)
 				continue
+			} else if isBehindTargetBranch {
+				mrStatus[mergeRequestIid] = "Needs rebase"
+				continue
 			}
-			if gitlab.IsAutomaticMergeAllowed(pipelines) {
+			automaticMergeAllowed := gitlab.IsAutomaticMergeAllowed(pipelines)
+			if shouldBeMerged && automaticMergeAllowed {
 				// hurray, we can merge it!
 				log.Printf("Merging merge request {id = %v, title=%v}.", mergeRequestIid, mergeRequest.Title)
 				// we pass sha to make sure that nothing was pushed in the meantime
@@ -151,6 +156,8 @@ func (m *MergeRequestTable) triggerAutomaticMerge(mergeRequestIids []int) tea.Cm
 					mrStatus[mergeRequestIid] = merged
 				}
 				continue
+			} else if automaticMergeAllowed {
+				mrStatus[mergeRequestIid] = "Ready to merge"
 			}
 		}
 
@@ -162,14 +169,14 @@ func (m *MergeRequestTable) triggerAutomaticMerge(mergeRequestIids []int) tea.Cm
 			}
 		}
 
-		return AutomaticMergeResult{
+		return MergeRequestProcessingResult{
 			mrStatus: mrStatus,
 		}
 	})
 }
 
 func (m *MergeRequestTable) Init() tea.Cmd {
-	return tea.Batch(m.listMergeRequests, m.triggerAutomaticMerge([]int{}))
+	return tea.Batch(m.listMergeRequests, m.processMergeRequests(map[int]bool{}))
 }
 
 func (m *MergeRequestTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
@@ -214,7 +221,7 @@ func (m *MergeRequestTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
 			m.mrMetadata[msg.mergeRequestIid] = metadata
 		}
 		m.redrawTable()
-	case AutomaticMergeResult:
+	case MergeRequestProcessingResult:
 		for mrIid, status := range msg.mrStatus {
 			metadata, exists := m.mrMetadata[mrIid]
 			if exists {
@@ -222,13 +229,11 @@ func (m *MergeRequestTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
 				m.mrMetadata[mrIid] = metadata
 			}
 		}
-		var toBeMerged []int
+		var toBeMerged = make(map[int]bool)
 		for _, request := range m.mergeRequests {
-			if m.mrMetadata[request.Iid].mergeAutomatically == yes {
-				toBeMerged = append(toBeMerged, request.Iid)
-			}
+			toBeMerged[request.Iid] = m.mrMetadata[request.Iid].mergeAutomatically == yes
 		}
-		cmds = append(cmds, m.triggerAutomaticMerge(toBeMerged))
+		cmds = append(cmds, m.processMergeRequests(toBeMerged))
 		m.redrawTable()
 	case context.UpdatedContextMessage:
 		m.recalculateTable()
