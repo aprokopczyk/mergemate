@@ -31,6 +31,7 @@ Following configuration options are supported:
 | MERGEMATE_SLB_BRANCH_PREFIX          | YES      | -             | Branch prefix you use to distinguish your branches from those of your teammates.                                          |
 | MERGEMATE_MERGE_JOB_INTERVAL_SECONDS | NO       | 60            | Time between two executions of background merge job.                                                                      |
 | MERGEMATE_TARGET_BRANCH_PREFIXES     | NO       | ""            | Comma separated list of prefixes that match branches which should be shown on target branch list, i.e, master,Version_.   |
+| MERGEMATE_FAVORITE_BRANCHES          | NO       | ""            | Comma separated list of favorite branches. Will be used to create shortcut actions in views.                              |
 
 Empty configuration file template:
 ```

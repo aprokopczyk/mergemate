@@ -27,6 +27,7 @@ type AppConfig struct {
 	TargetBranchPrefixes    string `koanf:"MERGEMATE_TARGET_BRANCH_PREFIXES"`
 	ApiToken                string `koanf:"MERGEMATE_API_TOKEN"`
 	MergeJobIntervalSeconds int    `koanf:"MERGEMATE_MERGE_JOB_INTERVAL_SECONDS"`
+	FavouriteBranches       string `koanf:"MERGEMATE_FAVORITE_BRANCHES"`
 }
 
 const configFile = "/mergemate/mergemate_config.env"
@@ -58,6 +59,7 @@ func main() {
 		MergeJobInterval:     config.MergeJobIntervalSeconds,
 		UserBranchPrefix:     config.SlbBranchPrefix,
 		TargetBranchPrefixes: strings.Split(config.TargetBranchPrefixes, ","),
+		FavouriteBranches:    strings.Split(config.FavouriteBranches, ","),
 	}
 	p := tea.NewProgram(ui.New(&appContext), tea.WithAltScreen())
 

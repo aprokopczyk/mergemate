@@ -15,6 +15,7 @@ type AppContext struct {
 	GitlabClient         *gitlab.ApiClient
 	UserBranchPrefix     string
 	TargetBranchPrefixes []string
+	FavouriteBranches    []string
 }
 
 type UpdatedContextMessage struct {

@@ -54,7 +54,7 @@ func NewBranchTable(context *context.AppContext) *BranchTable {
 			WithBaseStyle(lipgloss.NewStyle().Align(lipgloss.Left).BorderForeground(colors.Emerald600)).
 			WithPageSize(10),
 		branchesList:     createList(),
-		keys:             keys.BranchHelp(),
+		keys:             keys.BranchHelp(context.FavouriteBranches),
 		context:          context,
 		showMergeTargets: false,
 	}
@@ -171,6 +171,13 @@ func (m *BranchTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
 				cmds = append(cmds, m.createMergeRequest(sourceBranch.Name, targetBranch.name, sourceBranch.Commit.Message))
 				m.changeBranchSelectionVisibility(false)
 			}
+		default:
+			for i, binding := range m.keys.MergeFavourite {
+				if key.Matches(msg, binding) && !m.showMergeTargets {
+					sourceBranch := m.flexTable.HighlightedRow().Data[columnKeyBranchMetadata].(gitlab.Branch)
+					cmds = append(cmds, m.createMergeRequest(sourceBranch.Name, m.context.FavouriteBranches[i], sourceBranch.Commit.Message))
+				}
+			}
 		}
 	}
 
@@ -193,6 +200,9 @@ func (m *BranchTable) changeBranchSelectionVisibility(visible bool) {
 	m.recalculateComponents()
 	m.branchesList.ResetFilter()
 	m.branchesList.ResetSelected()
+	for i := range m.keys.MergeFavourite {
+		m.keys.MergeFavourite[i].SetEnabled(!visible)
+	}
 }
 
 func (m *BranchTable) recalculateComponents() {
@@ -217,11 +227,13 @@ func (m *BranchTable) contentSize() int {
 }
 
 func (m *BranchTable) FullHelp() []key.Binding {
-	return []key.Binding{
+	bindings := []key.Binding{
 		m.keys.MergeAutomatically,
 		m.keys.CloseTargetBranchesList,
 		m.keys.SelectTargetBranch,
 	}
+	bindings = append(bindings, m.keys.MergeFavourite...)
+	return bindings
 }
 
 func (m *BranchTable) View() string {
