@@ -114,7 +114,7 @@ func (m *MergeRequestTable) processMergeRequests(mergeRequests map[int]bool) tea
 				log.Printf("Merge request {id = %v, title=%v} is being rebased.", mergeRequest.Iid, mergeRequest.Title)
 				mrStatus[mergeRequestIid] = "Rebase in progress"
 				continue
-			} else if mergeRequest.RebaseError != "" {
+			} else if mergeRequest.RebaseError != "" && mergeRequest.HasConflicts {
 				mrStatus[mergeRequestIid] = "Merge conflict"
 				continue
 			}
