@@ -66,7 +66,10 @@ func NewMergeRequestTable(context *context.AppContext) *MergeRequestTable {
 }
 
 func (m *MergeRequestTable) listMergeRequests() tea.Msg {
-	mergeRequests := m.context.GitlabClient.ListMergeRequests()
+	mergeRequests, err := m.context.GitlabClient.ListMergeRequests()
+	if err != nil {
+		log.Printf("Error when fetching merge requests %v", err)
+	}
 	return mergeRequests
 }
 
@@ -77,7 +80,10 @@ type MergeAutomaticallyStatus struct {
 
 func (m *MergeRequestTable) shouldBeMergedAutomatically(mergeRequestIid int) tea.Cmd {
 	return func() tea.Msg {
-		notes := m.context.GitlabClient.ListMergeRequestNotes(mergeRequestIid)
+		notes, err := m.context.GitlabClient.ListMergeRequestNotes(mergeRequestIid)
+		if err != nil {
+			log.Printf("Error when fetching merge request notes %v", err)
+		}
 		var shouldBeMergedAutomatically bool
 		for _, note := range notes {
 			if strings.HasPrefix(note.Body, MergeAutomatically) {

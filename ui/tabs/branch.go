@@ -110,8 +110,15 @@ func (m *BranchTable) fetchBranchesWithPattern(patterns []string) []gitlab.Branc
 
 func (m *BranchTable) createMergeRequest(sourceBranch string, targetBranch string, title string) tea.Cmd {
 	return func() tea.Msg {
-		mrIid := m.context.GitlabClient.CreateMergeRequest(sourceBranch, targetBranch, title)
-		m.context.GitlabClient.CreateMergeRequestNote(mrIid, MergeAutomatically)
+		mrIid, err := m.context.GitlabClient.CreateMergeRequest(sourceBranch, targetBranch, title)
+
+		if err != nil {
+			log.Printf("Error when creating merge request %v", err)
+		}
+		err = m.context.GitlabClient.CreateMergeRequestNote(mrIid, MergeAutomatically)
+		if err != nil {
+			log.Printf("Error when marking merge request to be merged automatically %v", err)
+		}
 		return mergeRequestCreated{
 			iid: mrIid,
 		}

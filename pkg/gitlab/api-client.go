@@ -1,7 +1,6 @@
 package gitlab
 
 import (
-	"fmt"
 	"github.com/go-resty/resty/v2"
 	"sort"
 	"strconv"
@@ -70,7 +69,7 @@ type Branch struct {
 	Commit  CommitDetails `json:"commit"`
 }
 
-func (client *ApiClient) ListMergeRequests() []MergeRequestDetails {
+func (client *ApiClient) ListMergeRequests() ([]MergeRequestDetails, error) {
 	var mergeRequests []MergeRequestDetails
 	_, err := client.resty.R().
 		SetResult(&mergeRequests).
@@ -78,14 +77,13 @@ func (client *ApiClient) ListMergeRequests() []MergeRequestDetails {
 		SetQueryParam("state", "opened").
 		SetPathParam(projectIdParam, client.projectName).
 		Get(MergeRequestsEndpoint)
-
 	if err != nil {
-		fmt.Println("Error when executing query." + err.Error())
+		return nil, err
 	}
-	return mergeRequests
+	return mergeRequests, nil
 }
 
-func (client *ApiClient) ListMergeRequestNotes(mergeRequestIid int) []MergeRequestNote {
+func (client *ApiClient) ListMergeRequestNotes(mergeRequestIid int) ([]MergeRequestNote, error) {
 	var notes []MergeRequestNote
 	_, err := client.resty.R().
 		SetResult(&notes).
@@ -94,13 +92,13 @@ func (client *ApiClient) ListMergeRequestNotes(mergeRequestIid int) []MergeReque
 		Get(MergeRequestsEventsEndpoint)
 
 	if err != nil {
-		fmt.Println("Error when executing query." + err.Error())
+		return nil, err
 	}
 
-	return notes
+	return notes, nil
 }
 
-func (client *ApiClient) CreateMergeRequestNote(mergeRequestIid int, noteBody string) MergeRequestNote {
+func (client *ApiClient) CreateMergeRequestNote(mergeRequestIid int, noteBody string) error {
 	var note MergeRequestNote
 	_, err := client.resty.R().
 		SetResult(&note).
@@ -110,10 +108,10 @@ func (client *ApiClient) CreateMergeRequestNote(mergeRequestIid int, noteBody st
 		Post(MergeRequestsEventsEndpoint)
 
 	if err != nil {
-		fmt.Println("Error when executing query." + err.Error())
+		return err
 	}
 
-	return note
+	return nil
 }
 
 func (client *ApiClient) ListBranches(namePatterns []string) ([]Branch, error) {
@@ -137,18 +135,19 @@ func (client *ApiClient) ListBranches(namePatterns []string) ([]Branch, error) {
 	return result, nil
 }
 
-func (client *ApiClient) DeleteBranch(branchName string) {
+func (client *ApiClient) DeleteBranch(branchName string) error {
 	_, err := client.resty.R().
 		SetPathParam(projectIdParam, client.projectName).
 		SetPathParam(branchIdParam, branchName).
 		Delete(DeleteBranchEndpoint)
 
 	if err != nil {
-		fmt.Println("Error when executing query." + err.Error())
+		return err
 	}
+	return nil
 }
 
-func (client *ApiClient) CreateMergeRequest(sourceBranch string, targetBranch string, title string) int {
+func (client *ApiClient) CreateMergeRequest(sourceBranch string, targetBranch string, title string) (int, error) {
 	var result MergeRequestDetails
 	_, err := client.resty.R().
 		SetPathParam(projectIdParam, client.projectName).
@@ -160,10 +159,10 @@ func (client *ApiClient) CreateMergeRequest(sourceBranch string, targetBranch st
 		Post(MergeRequestsEndpoint)
 
 	if err != nil {
-		fmt.Println("Error when executing query." + err.Error())
+		return 0, err
 	}
 
-	return result.Iid
+	return result.Iid, nil
 }
 
 func (client *ApiClient) MergeMergeRequest(mergeRequestIid int, currentSha string) (*MergeRequestDetails, error) {
