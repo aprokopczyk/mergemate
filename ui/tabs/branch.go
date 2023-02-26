@@ -13,7 +13,10 @@ import (
 	"github.com/evertras/bubble-table/table"
 	"log"
 	"sort"
+	"time"
 )
+
+const lasCommitFormat = "2006-01-02 15:04:05"
 
 const (
 	columnKeyBranchName     = "branchName"
@@ -133,7 +136,7 @@ func (m *BranchTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
 			branch := branches[i]
 			rows = append(rows, table.NewRow(table.RowData{
 				columnKeyBranchName:     branch.Name,
-				columnKeyLastCommit:     branch.Commit.AuthoredDate,
+				columnKeyLastCommit:     branch.Commit.AuthoredDate.In(time.Local).Format(lasCommitFormat),
 				columnKeyBranchMetadata: branch,
 			}))
 
