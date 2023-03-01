@@ -214,6 +214,7 @@ func (m *MergeRequestTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
 		m.mrMetadata = mergeAutomaticallyStatuses
 		m.mergeRequests = msg
 		m.redrawTable()
+		m.flexTable = m.flexTable.PageFirst()
 	case mergeRequestCreated:
 		cmds = append(cmds, m.listMergeRequests)
 	case MergeAutomaticallyStatus:

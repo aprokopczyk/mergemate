@@ -149,6 +149,7 @@ func (m *BranchTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
 
 		}
 		m.flexTable = m.flexTable.WithRows(rows)
+		m.flexTable = m.flexTable.PageFirst()
 	case TargetBranches:
 		var targetBranches []list.Item
 		branches := msg.branches
