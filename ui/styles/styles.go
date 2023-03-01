@@ -6,7 +6,10 @@ import (
 )
 
 const (
-	TabsHeaderHeight = 3
+	TabsHeaderHeight  = 3
+	TableHeaderHeight = 3
+	TableFooterHeight = 3
+	MinTablePageSize  = 5
 )
 
 type Styles struct {

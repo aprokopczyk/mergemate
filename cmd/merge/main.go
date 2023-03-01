@@ -60,6 +60,7 @@ func main() {
 		UserBranchPrefix:     config.SlbBranchPrefix,
 		TargetBranchPrefixes: strings.Split(config.TargetBranchPrefixes, ","),
 		FavouriteBranches:    strings.Split(config.FavouriteBranches, ","),
+		TablePageSize:        styles.MinTablePageSize,
 	}
 	p := tea.NewProgram(ui.New(&appContext), tea.WithAltScreen())
 

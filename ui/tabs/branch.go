@@ -55,7 +55,7 @@ func NewBranchTable(context *context.AppContext) *BranchTable {
 			Focused(true).
 			HeaderStyle(lipgloss.NewStyle().Bold(true)).
 			WithBaseStyle(lipgloss.NewStyle().Align(lipgloss.Left).BorderForeground(colors.Emerald600)).
-			WithPageSize(10),
+			WithPageSize(context.TablePageSize),
 		branchesList:     createList(),
 		keys:             keys.BranchHelp(context.FavouriteBranches),
 		context:          context,
@@ -221,7 +221,8 @@ func (m *BranchTable) recalculateComponents() {
 	m.flexTable = m.flexTable.WithTargetWidth(tableWidth)
 	v := m.contentSize() - tableWidth
 	m.branchesList.SetWidth(v)
-	m.branchesList.SetHeight(m.context.MainContentHeight)
+	m.branchesList.SetHeight(m.context.TableContentHeight)
+	m.flexTable = m.flexTable.WithPageSize(m.context.TablePageSize)
 }
 
 func (m *BranchTable) tableSize() int {

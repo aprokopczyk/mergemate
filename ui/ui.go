@@ -70,7 +70,13 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		ui.context.WindowHeight = msg.Height
 		ui.context.WindowWidth = msg.Width
-		ui.context.MainContentHeight = msg.Height - styles.TabsHeaderHeight - ui.getHelpHeight()
+		ui.context.TableContentHeight = msg.Height - styles.TabsHeaderHeight - ui.getHelpHeight()
+
+		newPageSize := ui.context.TableContentHeight - styles.TableHeaderHeight - styles.TableFooterHeight
+		if newPageSize > styles.MinTablePageSize {
+			ui.context.TablePageSize = newPageSize
+		}
+
 		ui.help.Width = msg.Width
 		cmds = append(cmds, tea.ClearScreen)
 		cmds = append(cmds, triggerOnAll(context.UpdatedContextMessage{}, ui)...)
@@ -136,7 +142,7 @@ func (ui *UI) View() string {
 	toRender.WriteString(tabsContent)
 	toRender.WriteString("\n")
 	// fill up all available space to push footer to the bottom
-	toRender.WriteString(strings.Repeat("\n", max(0, ui.context.MainContentHeight-lipgloss.Height(tabsContent))))
+	toRender.WriteString(strings.Repeat("\n", max(0, ui.context.TableContentHeight-lipgloss.Height(tabsContent))))
 	toRender.WriteString(styleDefinitions.Help.Copy().Width(ui.context.WindowWidth).Render(ui.help.View(keys.GetKeyMap(ui.tabContent[ui.activeTab].FullHelp()))))
 	return toRender.String()
 }

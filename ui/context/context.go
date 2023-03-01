@@ -6,10 +6,11 @@ import (
 )
 
 type AppContext struct {
-	MainContentHeight    int
+	TableContentHeight   int
 	HelpHeight           int
 	WindowWidth          int
 	WindowHeight         int
+	TablePageSize        int
 	MergeJobInterval     int
 	Styles               styles.Styles
 	GitlabClient         *gitlab.ApiClient

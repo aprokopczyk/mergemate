@@ -58,7 +58,7 @@ func NewMergeRequestTable(context *context.AppContext) *MergeRequestTable {
 		}).WithRows([]table.Row{}).Focused(true).
 			HeaderStyle(lipgloss.NewStyle().Bold(true)).
 			WithBaseStyle(lipgloss.NewStyle().Align(lipgloss.Left).BorderForeground(colors.Emerald600)).
-			WithPageSize(10),
+			WithPageSize(context.TablePageSize),
 		context:    context,
 		mrMetadata: make(map[int]RequestMetadata),
 		keys:       keys.MergeRequestHelp(),
@@ -266,6 +266,7 @@ func (m *MergeRequestTable) redrawTable() {
 
 func (m *MergeRequestTable) recalculateTable() {
 	m.flexTable = m.flexTable.WithTargetWidth(m.context.WindowWidth - m.context.Styles.Tabs.Content.GetHorizontalFrameSize())
+	m.flexTable = m.flexTable.WithPageSize(m.context.TablePageSize)
 }
 
 func (m *MergeRequestTable) FullHelp() []key.Binding {
