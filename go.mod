@@ -4,9 +4,9 @@ go 1.19
 
 require (
 	github.com/adrg/xdg v0.4.0
-	github.com/charmbracelet/bubbles v0.11.0
+	github.com/charmbracelet/bubbles v0.15.0
 	github.com/charmbracelet/bubbletea v0.23.1
-	github.com/charmbracelet/lipgloss v0.5.0
+	github.com/charmbracelet/lipgloss v0.6.0
 	github.com/evertras/bubble-table v0.14.6
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/knadh/koanf v1.4.5

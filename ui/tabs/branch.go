@@ -1,6 +1,8 @@
 package tabs
 
 import (
+	"errors"
+	"fmt"
 	"github.com/aprokopczyk/mergemate/pkg/gitlab"
 	"github.com/aprokopczyk/mergemate/ui/colors"
 	"github.com/aprokopczyk/mergemate/ui/context"
@@ -12,6 +14,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
 	"log"
+	"net"
 	"sort"
 	"time"
 )
@@ -36,8 +39,8 @@ type branchItem struct {
 	name string
 }
 
-type mergeRequestCreated struct {
-	iid int
+type MergeRequestCreated struct {
+	mergeRequest gitlab.MergeRequestDetails
 }
 
 func (i branchItem) Title() string       { return i.name }
@@ -110,17 +113,23 @@ func (m *BranchTable) fetchBranchesWithPattern(patterns []string) []gitlab.Branc
 
 func (m *BranchTable) createMergeRequest(sourceBranch string, targetBranch string, title string) tea.Cmd {
 	return func() tea.Msg {
-		mrIid, err := m.context.GitlabClient.CreateMergeRequest(sourceBranch, targetBranch, title)
+		mergeRequest, err := m.context.GitlabClient.CreateMergeRequest(sourceBranch, targetBranch, title)
 
-		if err != nil {
+		if errors.Is(err, gitlab.MergeRequestAlreadyExists) {
+			return failed(fmt.Sprintf("merge request from branch %v already exists", sourceBranch))
+		} else if errors.As(err, new(net.Error)) {
+			return failed("merge request creation failed, please check your network connection")
+		} else if err != nil {
 			log.Printf("Error when creating merge request %v", err)
+			return failed("unrecognized error when creating merge request, please check log file")
 		}
-		err = m.context.GitlabClient.CreateMergeRequestNote(mrIid, MergeAutomatically)
+		err = m.context.GitlabClient.CreateMergeRequestNote(mergeRequest.Iid, MergeAutomatically)
 		if err != nil {
 			log.Printf("Error when marking merge request to be merged automatically %v", err)
+			return nil
 		}
-		return mergeRequestCreated{
-			iid: mrIid,
+		return MergeRequestCreated{
+			mergeRequest: *mergeRequest,
 		}
 	}
 }

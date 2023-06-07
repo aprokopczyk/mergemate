@@ -22,8 +22,9 @@ const (
 type UI struct {
 	tabs       []string
 	tabContent []tabs.TabContent
-	help       help.Model
 	activeTab  int
+	actionLog  *tabs.ActionLog
+	help       help.Model
 	context    *context.AppContext
 }
 
@@ -34,8 +35,9 @@ func New(context *context.AppContext) *UI {
 		tabs:       make([]string, lastTab),
 		tabContent: make([]tabs.TabContent, lastTab),
 		activeTab:  mergeRequestsTab,
-		context:    context,
+		actionLog:  tabs.NewActionLog(context),
 		help:       helpModel,
+		context:    context,
 	}
 
 	return ui
@@ -55,6 +57,12 @@ func (ui *UI) Init() tea.Cmd {
 func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 
+	actionLog, cmd := ui.actionLog.Update(msg)
+	ui.actionLog = actionLog
+	if cmd != nil {
+		cmds = append(cmds, cmd)
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -70,11 +78,13 @@ func (ui *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		ui.context.WindowHeight = msg.Height
 		ui.context.WindowWidth = msg.Width
-		ui.context.TableContentHeight = msg.Height - styles.TabsHeaderHeight - ui.getHelpHeight()
+		ui.context.TableContentHeight = msg.Height - styles.TabsHeaderHeight - ui.getHelpHeight() - ui.actionLog.Height
 
 		newPageSize := ui.context.TableContentHeight - styles.TableHeaderHeight - styles.TableFooterHeight
 		if newPageSize > styles.MinTablePageSize {
 			ui.context.TablePageSize = newPageSize
+		} else {
+			ui.context.TablePageSize = styles.MinTablePageSize
 		}
 
 		ui.help.Width = msg.Width
@@ -143,6 +153,8 @@ func (ui *UI) View() string {
 	toRender.WriteString("\n")
 	// fill up all available space to push footer to the bottom
 	toRender.WriteString(strings.Repeat("\n", max(0, ui.context.TableContentHeight-lipgloss.Height(tabsContent))))
+	toRender.WriteString(ui.actionLog.View())
+	toRender.WriteString("\n")
 	toRender.WriteString(styleDefinitions.Help.Copy().Width(ui.context.WindowWidth).Render(ui.help.View(keys.GetKeyMap(ui.tabContent[ui.activeTab].FullHelp()))))
 	return toRender.String()
 }

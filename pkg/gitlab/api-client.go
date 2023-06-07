@@ -1,6 +1,7 @@
 package gitlab
 
 import (
+	"errors"
 	"github.com/go-resty/resty/v2"
 	"sort"
 	"strconv"
@@ -68,6 +69,8 @@ type Branch struct {
 	Default bool          `json:"default"`
 	Commit  CommitDetails `json:"commit"`
 }
+
+var MergeRequestAlreadyExists = errors.New("merge request already exists")
 
 func (client *ApiClient) ListMergeRequests() ([]MergeRequestDetails, error) {
 	var mergeRequests []MergeRequestDetails
@@ -147,9 +150,9 @@ func (client *ApiClient) DeleteBranch(branchName string) error {
 	return nil
 }
 
-func (client *ApiClient) CreateMergeRequest(sourceBranch string, targetBranch string, title string) (int, error) {
+func (client *ApiClient) CreateMergeRequest(sourceBranch string, targetBranch string, title string) (*MergeRequestDetails, error) {
 	var result MergeRequestDetails
-	_, err := client.resty.R().
+	resp, err := client.resty.R().
 		SetPathParam(projectIdParam, client.projectName).
 		SetQueryParam(sourceBranchParam, sourceBranch).
 		SetQueryParam(targetBranchParam, targetBranch).
@@ -158,11 +161,16 @@ func (client *ApiClient) CreateMergeRequest(sourceBranch string, targetBranch st
 		SetResult(&result).
 		Post(MergeRequestsEndpoint)
 
+	resp.Status()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	return result.Iid, nil
+	if resp.StatusCode() == 409 {
+		return nil, MergeRequestAlreadyExists
+	}
+
+	return &result, nil
 }
 
 func (client *ApiClient) MergeMergeRequest(mergeRequestIid int, currentSha string) (*MergeRequestDetails, error) {
@@ -251,5 +259,6 @@ func createClient(gitlabUrl string, apiToken string) *resty.Client {
 	client := resty.New()
 	client.SetBaseURL(gitlabUrl)
 	client.SetHeader(tokenHeader, apiToken)
+	client.SetTimeout(time.Second * 10)
 	return client
 }

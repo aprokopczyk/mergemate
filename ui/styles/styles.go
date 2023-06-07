@@ -18,7 +18,8 @@ type Styles struct {
 		Header  lipgloss.Style
 		Content lipgloss.Style
 	}
-	Help lipgloss.Style
+	Help      lipgloss.Style
+	ActionLog lipgloss.Style
 }
 
 func NewStyles() Styles {
@@ -36,6 +37,11 @@ func NewStyles() Styles {
 
 	styles.Help = lipgloss.NewStyle().
 		Border(lipgloss.ThickBorder(), true, false, false, false).
+		BorderForeground(colors.Emerald800)
+
+	styles.ActionLog = lipgloss.NewStyle().
+		Border(lipgloss.ThickBorder(), true, false, false, false).
+		Padding(0, 1, 0, 2).
 		BorderForeground(colors.Emerald800)
 
 	return styles
