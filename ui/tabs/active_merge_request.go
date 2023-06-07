@@ -4,7 +4,6 @@ import (
 	"github.com/aprokopczyk/mergemate/pkg/gitlab"
 	"github.com/aprokopczyk/mergemate/ui/colors"
 	"github.com/aprokopczyk/mergemate/ui/context"
-	"github.com/aprokopczyk/mergemate/ui/keys"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -44,7 +43,6 @@ type ActiveMergeRequestTable struct {
 	mrMetadata    map[int]RequestMetadata
 	mergeRequests []gitlab.MergeRequestDetails
 	context       *context.AppContext
-	keys          keys.MergeRequestKeyMap
 }
 
 func NewActiveMergeRequestTable(context *context.AppContext) *ActiveMergeRequestTable {
@@ -61,7 +59,6 @@ func NewActiveMergeRequestTable(context *context.AppContext) *ActiveMergeRequest
 			WithPageSize(context.TablePageSize),
 		context:    context,
 		mrMetadata: make(map[int]RequestMetadata),
-		keys:       keys.MergeRequestHelp(),
 	}
 }
 

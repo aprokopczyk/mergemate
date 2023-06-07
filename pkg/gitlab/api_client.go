@@ -86,6 +86,7 @@ func (client *ApiClient) ListMergeRequests(state string) ([]MergeRequestDetails,
 		SetResult(&mergeRequests).
 		SetQueryParam("author_username", client.userName).
 		SetQueryParam("state", state).
+		SetQueryParam("per_page", "100").
 		SetPathParam(projectIdParam, client.projectName).
 		Get(MergeRequestsEndpoint)
 	if err != nil {
@@ -134,7 +135,7 @@ func (client *ApiClient) ListBranches(namePatterns []string) ([]Branch, error) {
 			SetResult(&branches).
 			SetPathParam(projectIdParam, client.projectName).
 			SetQueryParam("search", "^"+pattern).
-			SetQueryParam("per_page", "1000").
+			SetQueryParam("per_page", "100").
 			Get(BranchesEndpoint)
 		if err != nil {
 			return nil, err

@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	mergeRequestsTab = iota
+	activeMergeRequestsTab = iota
 	branchesTab
+	mergedMergeRequestsTab
 	lastTab
 )
 
@@ -34,7 +35,7 @@ func New(context *context.AppContext) *UI {
 	ui := &UI{
 		tabs:       make([]string, lastTab),
 		tabContent: make([]tabs.TabContent, lastTab),
-		activeTab:  mergeRequestsTab,
+		activeTab:  activeMergeRequestsTab,
 		actionLog:  tabs.NewActionLog(context),
 		help:       helpModel,
 		context:    context,
@@ -45,11 +46,13 @@ func New(context *context.AppContext) *UI {
 
 func (ui *UI) Init() tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
-	ui.tabs[mergeRequestsTab] = "Active merge requests"
-	ui.tabContent[mergeRequestsTab] = tabs.NewActiveMergeRequestTable(ui.context)
+	ui.tabs[activeMergeRequestsTab] = "Active merge requests"
+	ui.tabContent[activeMergeRequestsTab] = tabs.NewActiveMergeRequestTable(ui.context)
 	ui.tabs[branchesTab] = "Your branches"
 	ui.tabContent[branchesTab] = tabs.NewBranchTable(ui.context)
-	cmds = append(cmds, ui.tabContent[mergeRequestsTab].Init())
+	ui.tabs[mergedMergeRequestsTab] = "Merged merge requests"
+	ui.tabContent[mergedMergeRequestsTab] = tabs.NewMergedMergeRequestTable(ui.context)
+	cmds = append(cmds, ui.tabContent[activeMergeRequestsTab].Init())
 	cmds = append(cmds, ui.tabContent[branchesTab].Init())
 	return tea.Batch(cmds...)
 }
