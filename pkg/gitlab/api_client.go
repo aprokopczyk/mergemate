@@ -3,6 +3,7 @@ package gitlab
 import (
 	"errors"
 	"github.com/go-resty/resty/v2"
+	"log"
 	"sort"
 	"strconv"
 	"time"
@@ -126,7 +127,7 @@ func (client *ApiClient) CreateMergeRequestNote(mergeRequestIid int, noteBody st
 	return nil
 }
 
-func (client *ApiClient) ListBranches(namePatterns []string) ([]Branch, error) {
+func (client *ApiClient) listBranches(namePatterns []string) ([]Branch, error) {
 	var result []Branch
 
 	for _, pattern := range namePatterns {
@@ -145,6 +146,20 @@ func (client *ApiClient) ListBranches(namePatterns []string) ([]Branch, error) {
 	}
 
 	return result, nil
+}
+
+func (client *ApiClient) FetchBranchesWithPattern(patterns []string) []Branch {
+	branches, err := client.listBranches(patterns)
+
+	if err != nil {
+		log.Printf("Error when fetching branches list %v", err)
+	}
+
+	sort.SliceStable(branches, func(i, j int) bool {
+		return branches[i].Commit.AuthoredDate.Unix() > branches[j].Commit.AuthoredDate.Unix()
+	})
+
+	return branches
 }
 
 func (client *ApiClient) DeleteBranch(branchName string) error {

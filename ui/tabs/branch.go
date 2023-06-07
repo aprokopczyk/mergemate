@@ -15,7 +15,6 @@ import (
 	"github.com/evertras/bubble-table/table"
 	"log"
 	"net"
-	"sort"
 	"time"
 )
 
@@ -82,33 +81,13 @@ type UserBranches struct {
 }
 
 type TargetBranches struct {
-	branches []gitlab.Branch
+	Branches []gitlab.Branch
 }
 
 func (m *BranchTable) listUsersBranches() tea.Msg {
-	branches := m.fetchBranchesWithPattern([]string{m.context.UserBranchPrefix})
+	branches := m.context.GitlabClient.FetchBranchesWithPattern([]string{m.context.UserBranchPrefix})
 
 	return UserBranches{branches}
-}
-
-func (m *BranchTable) listTargetBranches() tea.Msg {
-	branches := m.fetchBranchesWithPattern(m.context.TargetBranchPrefixes)
-
-	return TargetBranches{branches}
-}
-
-func (m *BranchTable) fetchBranchesWithPattern(patterns []string) []gitlab.Branch {
-	branches, err := m.context.GitlabClient.ListBranches(patterns)
-
-	if err != nil {
-		log.Printf("Error when fetching branches list %v", err)
-	}
-
-	sort.SliceStable(branches, func(i, j int) bool {
-		return branches[i].Commit.AuthoredDate.Unix() > branches[j].Commit.AuthoredDate.Unix()
-	})
-
-	return branches
 }
 
 func (m *BranchTable) createMergeRequest(sourceBranch string, targetBranch string, title string) tea.Cmd {
@@ -135,7 +114,7 @@ func (m *BranchTable) createMergeRequest(sourceBranch string, targetBranch strin
 }
 
 func (m *BranchTable) Init() tea.Cmd {
-	return tea.Batch(m.listUsersBranches, m.listTargetBranches)
+	return tea.Batch(m.listUsersBranches)
 }
 
 func (m *BranchTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
@@ -161,7 +140,7 @@ func (m *BranchTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
 		m.flexTable = m.flexTable.PageFirst()
 	case TargetBranches:
 		var targetBranches []list.Item
-		branches := msg.branches
+		branches := msg.Branches
 		for i := 0; i < len(branches); i++ {
 			branch := branches[i]
 			item := branchItem{name: branch.Name}

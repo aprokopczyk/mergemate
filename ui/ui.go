@@ -44,6 +44,11 @@ func New(context *context.AppContext) *UI {
 	return ui
 }
 
+func (ui *UI) listTargetBranches() tea.Msg {
+	branches := ui.context.GitlabClient.FetchBranchesWithPattern(ui.context.TargetBranchPrefixes)
+	return tabs.TargetBranches{Branches: branches}
+}
+
 func (ui *UI) Init() tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 	ui.tabs[activeMergeRequestsTab] = "Active merge requests"
@@ -54,6 +59,8 @@ func (ui *UI) Init() tea.Cmd {
 	ui.tabContent[mergedMergeRequestsTab] = tabs.NewMergedMergeRequestTable(ui.context)
 	cmds = append(cmds, ui.tabContent[activeMergeRequestsTab].Init())
 	cmds = append(cmds, ui.tabContent[branchesTab].Init())
+	cmds = append(cmds, ui.tabContent[mergedMergeRequestsTab].Init())
+	cmds = append(cmds, ui.listTargetBranches)
 	return tea.Batch(cmds...)
 }
 
