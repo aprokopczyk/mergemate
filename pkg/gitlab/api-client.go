@@ -72,12 +72,20 @@ type Branch struct {
 
 var MergeRequestAlreadyExists = errors.New("merge request already exists")
 
-func (client *ApiClient) ListMergeRequests() ([]MergeRequestDetails, error) {
+func (client *ApiClient) OpenedMergeRequests() ([]MergeRequestDetails, error) {
+	return client.ListMergeRequests("opened")
+}
+
+func (client *ApiClient) MergedMergeRequests() ([]MergeRequestDetails, error) {
+	return client.ListMergeRequests("merged")
+}
+
+func (client *ApiClient) ListMergeRequests(state string) ([]MergeRequestDetails, error) {
 	var mergeRequests []MergeRequestDetails
 	_, err := client.resty.R().
 		SetResult(&mergeRequests).
 		SetQueryParam("author_username", client.userName).
-		SetQueryParam("state", "opened").
+		SetQueryParam("state", state).
 		SetPathParam(projectIdParam, client.projectName).
 		Get(MergeRequestsEndpoint)
 	if err != nil {

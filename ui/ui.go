@@ -45,8 +45,8 @@ func New(context *context.AppContext) *UI {
 
 func (ui *UI) Init() tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
-	ui.tabs[mergeRequestsTab] = "Merge requests"
-	ui.tabContent[mergeRequestsTab] = tabs.NewMergeRequestTable(ui.context)
+	ui.tabs[mergeRequestsTab] = "Active merge requests"
+	ui.tabContent[mergeRequestsTab] = tabs.NewActiveMergeRequestTable(ui.context)
 	ui.tabs[branchesTab] = "Your branches"
 	ui.tabContent[branchesTab] = tabs.NewBranchTable(ui.context)
 	cmds = append(cmds, ui.tabContent[mergeRequestsTab].Init())

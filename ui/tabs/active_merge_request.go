@@ -39,7 +39,7 @@ type RequestMetadata struct {
 	status             string
 }
 
-type MergeRequestTable struct {
+type ActiveMergeRequestTable struct {
 	flexTable     table.Model
 	mrMetadata    map[int]RequestMetadata
 	mergeRequests []gitlab.MergeRequestDetails
@@ -47,8 +47,8 @@ type MergeRequestTable struct {
 	keys          keys.MergeRequestKeyMap
 }
 
-func NewMergeRequestTable(context *context.AppContext) *MergeRequestTable {
-	return &MergeRequestTable{
+func NewActiveMergeRequestTable(context *context.AppContext) *ActiveMergeRequestTable {
+	return &ActiveMergeRequestTable{
 		flexTable: table.New([]table.Column{
 			table.NewFlexColumn(columnKeyMergeRequest, "Merge request", 1),
 			table.NewFlexColumn(columnKeyMergeAutomatically, "Merge automatically", 1),
@@ -65,8 +65,8 @@ func NewMergeRequestTable(context *context.AppContext) *MergeRequestTable {
 	}
 }
 
-func (m *MergeRequestTable) listMergeRequests() tea.Msg {
-	mergeRequests, err := m.context.GitlabClient.ListMergeRequests()
+func (m *ActiveMergeRequestTable) listMergeRequests() tea.Msg {
+	mergeRequests, err := m.context.GitlabClient.OpenedMergeRequests()
 	if err != nil {
 		log.Printf("Error when fetching merge requests %v", err)
 	}
@@ -78,7 +78,7 @@ type MergeAutomaticallyStatus struct {
 	shouldBeMergedAutomatically bool
 }
 
-func (m *MergeRequestTable) shouldBeMergedAutomatically(mergeRequestIid int) tea.Cmd {
+func (m *ActiveMergeRequestTable) shouldBeMergedAutomatically(mergeRequestIid int) tea.Cmd {
 	return func() tea.Msg {
 		notes, err := m.context.GitlabClient.ListMergeRequestNotes(mergeRequestIid)
 		if err != nil {
@@ -104,7 +104,7 @@ type MergeRequestProcessingResult struct {
 
 const merged = "Merged"
 
-func (m *MergeRequestTable) processMergeRequests(mergeRequests map[int]bool) tea.Cmd {
+func (m *ActiveMergeRequestTable) processMergeRequests(mergeRequests map[int]bool) tea.Cmd {
 	return tea.Tick(time.Second*time.Duration(m.context.MergeJobInterval), func(t time.Time) tea.Msg {
 		log.Printf("Processing merge requests: %v", mergeRequests)
 		mrStatus := make(map[int]string)
@@ -181,11 +181,11 @@ func (m *MergeRequestTable) processMergeRequests(mergeRequests map[int]bool) tea
 	})
 }
 
-func (m *MergeRequestTable) Init() tea.Cmd {
+func (m *ActiveMergeRequestTable) Init() tea.Cmd {
 	return tea.Batch(m.listMergeRequests, m.processMergeRequests(map[int]bool{}))
 }
 
-func (m *MergeRequestTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
+func (m *ActiveMergeRequestTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -249,7 +249,7 @@ func (m *MergeRequestTable) Update(msg tea.Msg) (TabContent, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m *MergeRequestTable) redrawTable() {
+func (m *ActiveMergeRequestTable) redrawTable() {
 	var rows []table.Row
 	for _, mergeRequest := range m.mergeRequests {
 		rows = append(rows, table.NewRow(table.RowData{
@@ -264,15 +264,15 @@ func (m *MergeRequestTable) redrawTable() {
 	m.flexTable = m.flexTable.WithRows(rows)
 }
 
-func (m *MergeRequestTable) recalculateTable() {
+func (m *ActiveMergeRequestTable) recalculateTable() {
 	m.flexTable = m.flexTable.WithTargetWidth(m.context.WindowWidth - m.context.Styles.Tabs.Content.GetHorizontalFrameSize())
 	m.flexTable = m.flexTable.WithPageSize(m.context.TablePageSize)
 }
 
-func (m *MergeRequestTable) FullHelp() []key.Binding {
+func (m *ActiveMergeRequestTable) FullHelp() []key.Binding {
 	return []key.Binding{}
 }
 
-func (m *MergeRequestTable) View() string {
+func (m *ActiveMergeRequestTable) View() string {
 	return m.flexTable.View()
 }
